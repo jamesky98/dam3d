@@ -1,0 +1,70 @@
+scalar ScalarName
+scalar Upload
+
+type File {
+  filename: String!
+  mimetype: String!
+  encoding: String!
+}
+
+type Query {
+  getNowUser: User
+  # ================
+  # case page
+  # ================
+  # cust page
+  
+  # ================
+  # item page
+  # ================
+}
+
+type Mutation {
+  # ================
+  # user login
+    allusers: [User!]!
+    checktoken: Boolean
+    signup(
+      user_name: String!
+      user_name2: String!
+      user_password: String!
+      user_mail: String!
+    ): AuthPayload
+    login(user_name: String!, user_password: String!): AuthPayload
+    updateUser(
+      user_id: Int!
+      user_name: String
+      user_mail: String
+      user_password: String
+      active: Int
+      role: Int
+      user_name2: String
+    ): User
+    delUser(user_id: Int!): User
+    chkUserByName(user_name: String): User
+    changePASSWord(user_id: Int!, oldpass: String!, newpass: String!, chkpass: String!, enforce: Boolean): String
+  # ================
+  # upload files
+    uploadFile(
+      file: Upload!,
+      subpath:String!
+      newfilename: String!,
+    ): File!
+
+}
+
+type AuthPayload {
+  token: String
+  user: User
+}
+
+type User {
+  user_id: ID!
+  user_name: String!
+  user_mail: String!
+  user_password: String!
+  active: Int
+  role: Int
+  user_name2: String!
+  user_updated_time: Date
+}
