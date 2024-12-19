@@ -16,8 +16,10 @@ html, body{
 }
 
 #cesiumContainer{
-  position: relative;
   height: calc(100% - var(--bottom-div));
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
 .cursorH{
