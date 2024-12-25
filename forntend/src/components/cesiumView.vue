@@ -70,7 +70,42 @@
     
     // google Maptile 加速使用
     RequestScheduler.requestsByServer["tile.googleapis.com:443"] = 18;
-
+  const layersets = ref({
+    layers: [],
+    imglayers: [],
+    baseLayers: [],
+    tilelayers: [],
+    upLayer: null,
+    downLayer: null,
+    selectedLayer: null,
+    terrainLayer: null,
+    raise: function (layer, index) {
+      console.log('layer:',toRaw(layer),'index:',index);
+      imageryLayers.raise(toRaw(layer));
+      layersets.value.upLayer = layer;
+      layersets.value.downLayer = layersets.value.layers[Math.max(0, index - 1)];
+      updateLayerList();
+      window.setTimeout(function () {
+        layersets.value.upLayer = layersets.value.downLayer = null;
+      }, 10);
+    },
+    lower: function (layer, index) {
+      imageryLayers.lower(toRaw(layer));
+      layersets.value.upLayer =
+        layersets.value.layers[Math.min(layersets.value.layers.length - 1, index + 1)];
+      layersets.value.downLayer = layer;
+      updateLayerList();
+      window.setTimeout(function () {
+        layersets.value.upLayer = layersets.value.downLayer = null;
+      }, 10);
+    },
+    canRaise: function (layerIndex) {
+      return layerIndex > this.tilelayers.length;
+    },
+    canLower: function (layerIndex) {
+      return layerIndex >= this.tilelayers.length && layerIndex < (this.tilelayers.length+imageryLayers.length) - 1;
+    },
+  })
   const viewModel = {
     layers: [],
     imglayers: [],
@@ -99,7 +134,7 @@
     lower: function (layer, index) {
       imageryLayers.lower(layer);
       viewModel.upLayer =
-      viewModel.layers[Math.min(viewModel.layers.length - 1, index + 1)];
+        viewModel.layers[Math.min(viewModel.layers.length - 1, index + 1)];
       viewModel.downLayer = layer;
       updateLayerList();
       window.setTimeout(function () {
@@ -218,6 +253,7 @@
       const layer = new ImageryLayer(imageryProvider);
       layer.name = name;
       baseLayers.push(layer);
+      layersets.value.baseLayers.push(layer);
       updateLayerList();
     } catch (error) {
       console.error(`There was an error while creating ${name}. ${error}`);
@@ -227,6 +263,7 @@
       const layer = terrainProviderPromise
       layer.name = name;
       terrainLayers.push(layer);
+      layersets.value.tilelayers.push(layer);
       // updateLayerList();
   }
 
@@ -286,19 +323,24 @@
   function updateLayerList() {
     const numLayers = imageryLayers.length;
     viewModel.imglayers.splice(0, viewModel.imglayers.length);
+    layersets.value.imglayers.splice(0, layersets.value.imglayers.length);
     for (let i = numLayers - 1; i >= 0; --i) {
       viewModel.imglayers.push(imageryLayers.get(i));
+      layersets.value.imglayers.push(imageryLayers.get(i));
     }
 
     const numTileLayers = cs_viewer.scene.primitives.length;
     viewModel.tilelayers.splice(0, viewModel.tilelayers.length);
+    layersets.value.tilelayers.splice(0, layersets.value.tilelayers.length);
     for (let i = numTileLayers - 1; i >= 0; --i) {
       viewModel.tilelayers.push(cs_viewer.scene.primitives.get(i));
+      layersets.value.tilelayers.push(cs_viewer.scene.primitives.get(i));
     }
 
 
     viewModel.layers.splice(0, viewModel.layers.length);
     viewModel.layers=[...viewModel.tilelayers, ...viewModel.imglayers];
+    layersets.value.layers=[...layersets.value.tilelayers, ...layersets.value.imglayers];
 
     console.log('viewModel',viewModel);
   }
@@ -308,7 +350,7 @@
     // Initialize the Cesium Viewer in the HTML element with the `cesiumContainer` ID.
     viewer = new Viewer('cesiumContainer', {
       animation: true,
-      baseLayerPicker: true,
+      baseLayerPicker: false,
       // fullscreenButton: false,
       // vrButton: false,
       geocoder: false,
@@ -385,26 +427,6 @@
     return viewer;
   } 
 
-// 載入底圖(廢棄)
-  // let googleTerrainLayer;
-  // function load3DTilestLayer(viewer){
-  //   console.log('load3DTilestLayer')
-  //   // console.log('out: ',viewer);
-  //   // Add Cesium OSM Buildings, a global 3D buildings layer.
-  //   createOsmBuildingsAsync().then((buildingTileset)=>{
-  //     // console.log('osm-b: ',buildingTileset);
-  //     buildingTileset.show = false;
-  //     viewer.scene.primitives.add(buildingTileset);   
-  //   })
-  //   Cesium3DTileset.fromUrl("https://tile.googleapis.com/v1/3dtiles/root.json?key=" + google_token.value).then(tileset=>{
-  //     googleTerrainLayer = tileset;
-  //     viewer.imageryLayers.add(googleTerrainLayer);
-  //     // console.log('goole: ',tileset);
-  //     // tileset.show = true;
-  //     // viewer.scene.primitives.add(tileset); 
-  //   });
-  // }
-
   function getIonResouse(viewer){
     // 使用 Ion API 獲取資源清單
     // 獲取 Ion 資產清單
@@ -457,7 +479,7 @@
 
     // 將toolbar綁定至knockout
     const toolbar = document.getElementById("toolbar");
-    knockout.applyBindings(viewModel, toolbar);
+    // knockout.applyBindings(viewModel, toolbar);
     // 監聽selectedLayer變化
     knockout
       .getObservable(viewModel, "selectedLayer")
@@ -486,16 +508,16 @@
       });
     // 監聽terrainLayer變化
     knockout
-      .getObservable(viewModel, "terrainLayer")
-      .subscribe(function (terrain) {
-        cs_viewer.scene.setTerrain(
-          new Terrain(terrain),
-        );
+  //     .getObservable(viewModel, "terrainLayer")
+  //     .subscribe(function (terrain) {
+  //       cs_viewer.scene.setTerrain(
+  //         new Terrain(terrain),
+  //       );
 
-      });
+  //     });
 
-      console.log('cesiumImgLayers: ',imageryLayers);
-      // console.log('viewModel: ',viewModel);
+  //     console.log('cesiumImgLayers: ',imageryLayers);
+  //     // console.log('viewModel: ',viewModel);
   });
 
   // 切換顯示圖層管理工具
@@ -539,7 +561,7 @@
     <div id="loadingOverlay"><h1>Loading...</h1></div>
     <div id="toolbar">
       <div id="layerManager" class="toolvisible">
-        <div>
+        <!-- <div>
           <table>
             <tbody data-bind="foreach: layers">
               <tr data-bind="css: { up: $parent.upLayer === $data, down: $parent.downLayer === $data }">
@@ -573,8 +595,27 @@
               </tr>
             </tbody>
           </table>
+        </div> -->
+        <div>
+          <table>
+            <tbody>
+              <tr v-for="(layer, index) in  layersets.layers" 
+                :class="['align-items-center', (layer===layersets.upLayer)?'up':(layer===layersets.downLayer)?'down':'']">
+                <td class="col-auto"><input type="checkbox" v-model="layer.show"></td>
+                <td class="text-nowrap">{{layer.name}}</td>
+                <td class="col-auto">
+                  <input type="range" min="0" max="1" step="0.01" v-model="layer.alpha">
+                </td>
+                <td class="col-auto">
+                  <button class="cesium-button" @click="layersets.raise(layer, index)" v-show="layersets.canRaise(index)">▲</button>
+                </td>
+                <td class="col-auto">
+                  <button class="cesium-button" @click="layersets.lower(layer, index)" v-show="layersets.canLower(index)">▼</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        
       </div>
       <button id="hiddenBtn" class="cesium-button" @click.stop="showLayerManager">
         <div class="btnVline"></div>
@@ -613,7 +654,8 @@
   transition: transform 0.4s ease-out;
 }
 
-table tr>td:nth-child(1){
+table tr > td:nth-child(1),
+table tr > td:nth-child(2){
   min-width: 5rem;
 }
 
@@ -659,7 +701,7 @@ table tr>td:nth-child(1){
   
 }
 
-#hiddenBtn:focus {
+#hiddenBtn:focus,td>button:focus {
   border:none;
   outline: none;
 }
