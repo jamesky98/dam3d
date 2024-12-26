@@ -2,7 +2,8 @@
   import { 
     ref, reactive, onMounted, 
     provide, inject, watch,
-    isProxy, toRaw 
+    isProxy, toRaw, 
+    computed
   } from "vue";
 
   import { 
@@ -70,181 +71,85 @@
     
     // google Maptile 加速使用
     RequestScheduler.requestsByServer["tile.googleapis.com:443"] = 18;
-  const layersets = ref({
-    layers: [],
-    imglayers: [],
-    baseLayers: [],
-    tilelayers: [],
-    upLayer: null,
-    downLayer: null,
-    selectedLayer: null,
-    terrainLayer: null,
-    raise: function (layer, index) {
-      console.log('layer:',toRaw(layer),'index:',index);
-      imageryLayers.raise(toRaw(layer));
-      layersets.value.upLayer = layer;
-      layersets.value.downLayer = layersets.value.layers[Math.max(0, index - 1)];
-      updateLayerList();
-      window.setTimeout(function () {
-        layersets.value.upLayer = layersets.value.downLayer = null;
-      }, 10);
-    },
-    lower: function (layer, index) {
-      imageryLayers.lower(toRaw(layer));
-      layersets.value.upLayer =
-        layersets.value.layers[Math.min(layersets.value.layers.length - 1, index + 1)];
-      layersets.value.downLayer = layer;
-      updateLayerList();
-      window.setTimeout(function () {
-        layersets.value.upLayer = layersets.value.downLayer = null;
-      }, 10);
-    },
-    canRaise: function (layerIndex) {
-      return layerIndex > this.tilelayers.length;
-    },
-    canLower: function (layerIndex) {
-      return layerIndex >= this.tilelayers.length && layerIndex < (this.tilelayers.length+imageryLayers.length) - 1;
-    },
-  })
-  const viewModel = {
-    layers: [],
-    imglayers: [],
-    baseLayers: [],
-    tilelayers: [],
-    terrainLayers: [],
-    upLayer: null,
-    downLayer: null,
-    selectedLayer: null,
-    terrainLayer: null,
-    isSelectableLayer: function (layer) {
-      return this.baseLayers.indexOf(layer) >= 0;
-    },
-    isTilesleLayer: function (layer) {
-      return this.tilelayers.indexOf(layer) >= 0;
-    },
-    raise: function (layer, index) {
-      imageryLayers.raise(layer);
-      viewModel.upLayer = layer;
-      viewModel.downLayer = viewModel.layers[Math.max(0, index - 1)];
-      updateLayerList();
-      window.setTimeout(function () {
-        viewModel.upLayer = viewModel.downLayer = null;
-      }, 10);
-    },
-    lower: function (layer, index) {
-      imageryLayers.lower(layer);
-      viewModel.upLayer =
-        viewModel.layers[Math.min(viewModel.layers.length - 1, index + 1)];
-      viewModel.downLayer = layer;
-      updateLayerList();
-      window.setTimeout(function () {
-        viewModel.upLayer = viewModel.downLayer = null;
-      }, 10);
-    },
-    canRaise: function (layerIndex) {
-      return layerIndex > this.tilelayers.length;
-    },
-    canLower: function (layerIndex) {
-      return layerIndex >= this.tilelayers.length && layerIndex < (this.tilelayers.length+imageryLayers.length) - 1;
-    },
-  };
-
-  const baseLayers = viewModel.baseLayers;
-  const terrainLayers = viewModel.terrainLayers;
-  knockout.track(viewModel);
+    const selectLayerIndex = ref(0);
+    const terrainLayerIndex = ref(0);
+    const layersets = ref({
+      layers: [],
+      imglayers: [],
+      baseLayers: [],
+      tilelayers: [],
+      terrainLayers:[],
+      upLayer: null,
+      downLayer: null,
+      // selectedLayer: null,
+      terrainLayer: null,
+      isSelectableLayer: function (layer) {
+        // console.log('baseLayers:',toRaw(this.baseLayers));
+        // console.log('layer:',toRaw(layer));
+        // console.log( this.baseLayers.indexOf(layer));
+        return this.baseLayers.indexOf(layer) >= 0;
+      },
+      isTilesleLayer: function (layer) {
+        return this.tilelayers.indexOf(layer) >= 0;
+      },
+      raise: function (layer, index) {
+        console.log('layer:',toRaw(layer),'index:',index);
+        imageryLayers.raise(toRaw(layer));
+        layersets.value.upLayer = layer;
+        layersets.value.downLayer = layersets.value.layers[Math.max(0, index - 1)];
+        updateLayerList();
+        window.setTimeout(function () {
+          layersets.value.upLayer = layersets.value.downLayer = null;
+        }, 10);
+      },
+      lower: function (layer, index) {
+        imageryLayers.lower(toRaw(layer));
+        layersets.value.upLayer =
+          layersets.value.layers[Math.min(layersets.value.layers.length - 1, index + 1)];
+        layersets.value.downLayer = layer;
+        updateLayerList();
+        window.setTimeout(function () {
+          layersets.value.upLayer = layersets.value.downLayer = null;
+        }, 10);
+      },
+      canRaise: function (layerIndex) {
+        return layerIndex > this.tilelayers.length;
+      },
+      canLower: function (layerIndex) {
+        return layerIndex >= this.tilelayers.length && layerIndex < (this.tilelayers.length+imageryLayers.length) - 1;
+      },
+    })
 
   function setupLayers() {
     // Create all the base layers that this example will support.
     // These base layers aren't really special.  It's possible to have multiple of them
     // enabled at once, just like the other layers, but it doesn't make much sense because
     // all of these layers cover the entire globe and are opaque.
-    // addBaseLayerOption("Bing Maps Aerial", createWorldImageryAsync());
-    // addBaseLayerOption(
-    //   "Bing Maps Road",
-    //   createWorldImageryAsync({
-    //     style: IonWorldImageryStyle.ROAD,
-    //   }),
-    // );
-    // addBaseLayerOption(
-    //   "ArcGIS World Street Maps",
-    //   ArcGisMapServerImageryProvider.fromUrl(
-    //     "https://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer",
-    //   ),
-    // );
-    addBaseLayerOption("OpenStreetMaps", new OpenStreetMapImageryProvider());
-    // addBaseLayerOption(
-    //   "Stamen Maps",
-    //   new OpenStreetMapImageryProvider({
-    //     url: "https://stamen-tiles.a.ssl.fastly.net/watercolor/",
-    //     fileExtension: "jpg",
-    //     credit:
-    //       "Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under CC BY SA.",
-    //   }),
-    // );
-    // addBaseLayerOption(
-    //   "Natural Earth II (local)",
-    //   TileMapServiceImageryProvider.fromUrl(
-    //     buildModuleUrl("Assets/Textures/NaturalEarthII"),
-    //   ),
-    // );
-    // addBaseLayerOption(
-    //   "USGS Shaded Relief (via WMTS)",
-    //   new WebMapTileServiceImageryProvider({
-    //     url: "https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer/WMTS",
-    //     layer: "USGSShadedReliefOnly",
-    //     style: "default",
-    //     format: "image/jpeg",
-    //     tileMatrixSetID: "default028mm",
-    //     maximumLevel: 19,
-    //     credit: "U. S. Geological Survey",
-    //   }),
-    // );
+    new Promise((resolve, reject) => {
+      let res = addBaseLayerOption("OpenStreetMaps", new OpenStreetMapImageryProvider());
+      resolve(res);
+    }).then((res) => {
+      addBaseLayerOption(
+        "臺灣通用電子地圖(正射影像)",
+        new WebMapTileServiceImageryProvider({
+          url: "https://wmts.nlsc.gov.tw/wmts",
+          layer: "PHOTO2",
+          style: "default",
+          format: "image/jpeg",
+          tileMatrixSetID: "GoogleMapsCompatible",
+          maximumLevel: 19,
+          credit: "maps.nlsc.gov.tw",
+        }),
+      );
 
-    addBaseLayerOption(
-      "臺灣通用電子地圖(正射影像)",
-      new WebMapTileServiceImageryProvider({
-        url: "https://wmts.nlsc.gov.tw/wmts",
-        layer: "PHOTO2",
-        style: "default",
-        format: "image/jpeg",
-        tileMatrixSetID: "GoogleMapsCompatible",
-        maximumLevel: 19,
-        credit: "maps.nlsc.gov.tw",
-      }),
-    );
-
-    // Create the additional layers
-    // addAdditionalLayerOption(
-    //   "United States GOES Infrared",
-    //   new WebMapServiceImageryProvider({
-    //     url: "https://mesonet.agron.iastate.edu/cgi-bin/wms/goes/conus_ir.cgi?",
-    //     layers: "goes_conus_ir",
-    //     credit: "Infrared data courtesy Iowa Environmental Mesonet",
-    //     parameters: {
-    //       transparent: "true",
-    //       format: "image/png",
-    //     },
-    //   }),
-    // );
-    addAdditionalLayerOption(
-      "United States Weather Radar",
-      new WebMapServiceImageryProvider({
-        url: "https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r.cgi?",
-        layers: "nexrad-n0r",
-        credit: "Radar data courtesy Iowa Environmental Mesonet",
-        parameters: {
-          transparent: "true",
-          format: "image/png",
-        },
-      }),
-    );
-    addAdditionalLayerOption("Grid", new GridImageryProvider(), 1.0, false);
-    addAdditionalLayerOption(
-      "Tile Coordinates",
-      new TileCoordinatesImageryProvider(),
-      1.0,
-      false,
-    );
+      addAdditionalLayerOption("Grid", new GridImageryProvider(), 1.0, false);
+      addAdditionalLayerOption(
+        "Tile Coordinates",
+        new TileCoordinatesImageryProvider(),
+        1.0,
+        false,
+      );
+    });
   }
 
   async function addBaseLayerOption(name, imageryProviderPromise) {
@@ -252,9 +157,13 @@
       const imageryProvider = await Promise.resolve(imageryProviderPromise);
       const layer = new ImageryLayer(imageryProvider);
       layer.name = name;
-      baseLayers.push(layer);
       layersets.value.baseLayers.push(layer);
       updateLayerList();
+      if (layersets.value.baseLayers.length===1){
+        layersets.value.selectedLayer = layersets.value.baseLayers[0];
+        baseLayerChange(0);
+      }
+      return layer;
     } catch (error) {
       console.error(`There was an error while creating ${name}. ${error}`);
     }
@@ -262,11 +171,8 @@
   async function addTerrainLayerOption(name, terrainProviderPromise) {
       const layer = terrainProviderPromise
       layer.name = name;
-      terrainLayers.push(layer);
-      layersets.value.tilelayers.push(layer);
-      // updateLayerList();
+      layersets.value.terrainLayers.push(layer);
   }
-
   async function addAdditionalLayerOption(
     name,
     imageryProviderPromise,
@@ -280,7 +186,6 @@
       layer.show = defaultValue(show, true);
       layer.name = name;
       imageryLayers.add(layer);
-      knockout.track(layer, ["alpha", "show", "name"]);
       updateLayerList();
     } catch (error) {
       console.error(`There was an error while creating ${name}. ${error}`);
@@ -313,7 +218,6 @@
       layer.name = name;
       cs_viewer.scene.primitives.add(layer);
 
-      knockout.track(layer, ["alpha", "show", "name"]);
       updateLayerList();
     } catch (error) {
       console.error(`There was an error while creating ${name}. ${error}`);
@@ -322,27 +226,23 @@
 
   function updateLayerList() {
     const numLayers = imageryLayers.length;
-    viewModel.imglayers.splice(0, viewModel.imglayers.length);
     layersets.value.imglayers.splice(0, layersets.value.imglayers.length);
     for (let i = numLayers - 1; i >= 0; --i) {
-      viewModel.imglayers.push(imageryLayers.get(i));
       layersets.value.imglayers.push(imageryLayers.get(i));
     }
 
     const numTileLayers = cs_viewer.scene.primitives.length;
-    viewModel.tilelayers.splice(0, viewModel.tilelayers.length);
     layersets.value.tilelayers.splice(0, layersets.value.tilelayers.length);
     for (let i = numTileLayers - 1; i >= 0; --i) {
-      viewModel.tilelayers.push(cs_viewer.scene.primitives.get(i));
       layersets.value.tilelayers.push(cs_viewer.scene.primitives.get(i));
     }
 
+    layersets.value.layers.splice(0, layersets.value.layers.length);
+    const imgL = toRaw(layersets.value.imglayers);
+    const imgT = toRaw(layersets.value.tilelayers);
+    layersets.value.layers=[...imgT, ...imgL];
 
-    viewModel.layers.splice(0, viewModel.layers.length);
-    viewModel.layers=[...viewModel.tilelayers, ...viewModel.imglayers];
-    layersets.value.layers=[...layersets.value.tilelayers, ...layersets.value.imglayers];
-
-    console.log('viewModel',viewModel);
+    // console.log('layersets',layersets.value);
   }
 
 // Cesium初始化
@@ -426,7 +326,7 @@
     console.log('Cesium初始化')
     return viewer;
   } 
-
+// 取得Ion資源
   function getIonResouse(viewer){
     // 使用 Ion API 獲取資源清單
     // 獲取 Ion 資產清單
@@ -444,17 +344,17 @@
         switch (asset.type.toUpperCase()) {
           case 'IMAGERY':
             addBaseLayerOption(asset.name, IonImageryProvider.fromAssetId(2));
-            console.log(`Loaded imagery asset: ${asset.name}`);
+            // console.log(`Loaded imagery asset: ${asset.name}`);
             break;
 
           case 'TERRAIN':
             addTerrainLayerOption(asset.name, CesiumTerrainProvider.fromIonAssetId(asset.id));
-            console.log(`Loaded terrain asset: ${asset.name}`);
+            // console.log(`Loaded terrain asset: ${asset.name}`);
             break;
 
           case '3DTILES':
             add3DTilesLayerOption(asset.name, asset.id, 1, false);
-            console.log(`Loaded 3D tileset asset: ${asset.name}`);
+            // console.log(`Loaded 3D tileset asset: ${asset.name}`);
             break;
 
           default:
@@ -463,11 +363,57 @@
         
       });
       addTerrainLayerOption('無',new EllipsoidTerrainProvider());
+      terrainLayerChange(0);
+      // layersets.value.selectedLayer = layersets.value.baseLayers[0];
     })
     .catch(error => {
       console.error('Error fetching Ion assets:', error);
     });
   }
+
+  watch(selectLayerIndex,(newVal)=>{
+    baseLayerChange(newVal);
+  });
+  function baseLayerChange(baseLayerIndex) {
+    // console.log('baseLayerIndex:',baseLayerIndex);
+    // Handle changes to the drop-down base layer selector.
+    const baseLayer = layersets.value.baseLayers[baseLayerIndex]?layersets.value.baseLayers[baseLayerIndex]:null;
+    if(!baseLayer) return;
+
+    let activeLayerIndex = 0;
+    const numLayers = layersets.value.layers.length;
+    for (let i = 0; i < numLayers; ++i) {
+      if (layersets.value.isSelectableLayer(toRaw(layersets.value.layers[i]))) {
+        activeLayerIndex = i;
+        break;
+      }
+    }
+    const activeLayer = toRaw(layersets.value.layers[activeLayerIndex]);
+    const show = activeLayer.show;
+    const alpha = activeLayer.alpha;
+    imageryLayers.remove(activeLayer, false);
+    imageryLayers.add(toRaw(baseLayer), numLayers - activeLayerIndex - 1);
+    baseLayer.show = show;
+    baseLayer.alpha = alpha;
+    updateLayerList();
+    return baseLayer;
+  }
+  watch(terrainLayerIndex,(newVal)=>{
+    terrainLayerChange(newVal);
+  });
+  function terrainLayerChange(terrainLayerIndex) {
+    console.log('terrainLayerIndex:',terrainLayerIndex);
+
+    // Handle changes to the drop-down base layer selector.
+    const terrainLayer = layersets.value.terrainLayers[terrainLayerIndex]?layersets.value.terrainLayers[terrainLayerIndex]:null;
+    if(!terrainLayer) return;
+      cs_viewer.scene.setTerrain(
+        new Terrain(toRaw(terrainLayer)),
+      );
+    // cs_viewer.scene.terrainProvider = toRaw(terrainLayer);
+    return terrainLayer;
+  }
+
 // 頁面渲染完成後執行步驟
   onMounted( async function () {
     cs_viewer = await initCesiumView(cs_viewer,'');
@@ -477,37 +423,39 @@
     setupLayers();
     getIonResouse();
 
+    console.log(layersets.value.tilelayers);
+
     // 將toolbar綁定至knockout
-    const toolbar = document.getElementById("toolbar");
+    // const toolbar = document.getElementById("toolbar");
     // knockout.applyBindings(viewModel, toolbar);
     // 監聽selectedLayer變化
-    knockout
-      .getObservable(viewModel, "selectedLayer")
-      .subscribe(function (baseLayer) {
-        // console.log('knockout: ',baseLayer);
-        // console.log('cs_viewer: ',cs_viewer.imageryLayers);
-        // Handle changes to the drop-down base layer selector.
-        let activeLayerIndex = 0;
-        const numLayers = viewModel.layers.length;
-        for (let i = 0; i < numLayers; ++i) {
-          if (viewModel.isSelectableLayer(viewModel.layers[i])) {
-            activeLayerIndex = i;
-            break;
-          }
-        }
-        // console.log('activeLayerIndex: ',activeLayerIndex);
-        const activeLayer = viewModel.layers[activeLayerIndex];
-        const show = activeLayer.show;
-        const alpha = activeLayer.alpha;
-        imageryLayers.remove(activeLayer, false);
-        imageryLayers.add(baseLayer, numLayers - activeLayerIndex - 1);
-        baseLayer.show = show;
-        baseLayer.alpha = alpha;
-        updateLayerList();
+    // knockout
+    //   .getObservable(viewModel, "selectedLayer")
+    //   .subscribe(function (baseLayer) {
+    //     // console.log('knockout: ',baseLayer);
+    //     // console.log('cs_viewer: ',cs_viewer.imageryLayers);
+    //     // Handle changes to the drop-down base layer selector.
+    //     let activeLayerIndex = 0;
+    //     const numLayers = viewModel.layers.length;
+    //     for (let i = 0; i < numLayers; ++i) {
+    //       if (viewModel.isSelectableLayer(viewModel.layers[i])) {
+    //         activeLayerIndex = i;
+    //         break;
+    //       }
+    //     }
+    //     // console.log('activeLayerIndex: ',activeLayerIndex);
+    //     const activeLayer = viewModel.layers[activeLayerIndex];
+    //     const show = activeLayer.show;
+    //     const alpha = activeLayer.alpha;
+    //     imageryLayers.remove(activeLayer, false);
+    //     imageryLayers.add(baseLayer, numLayers - activeLayerIndex - 1);
+    //     baseLayer.show = show;
+    //     baseLayer.alpha = alpha;
+    //     updateLayerList();
         
-      });
+    //   });
     // 監聽terrainLayer變化
-    knockout
+    // knockout
   //     .getObservable(viewModel, "terrainLayer")
   //     .subscribe(function (terrain) {
   //       cs_viewer.scene.setTerrain(
@@ -561,48 +509,18 @@
     <div id="loadingOverlay"><h1>Loading...</h1></div>
     <div id="toolbar">
       <div id="layerManager" class="toolvisible">
-        <!-- <div>
-          <table>
-            <tbody data-bind="foreach: layers">
-              <tr data-bind="css: { up: $parent.upLayer === $data, down: $parent.downLayer === $data }">
-                <td><input type="checkbox" data-bind="checked: show"></td>
-                <td>
-                  <span data-bind="text: name, visible: !$parent.isSelectableLayer($data)"></span>
-                  <select data-bind="visible: $parent.isSelectableLayer($data), options: $parent.baseLayers, optionsText: 'name', value: $parent.selectedLayer"></select>                  
-                </td>
-                <td>
-                  <input type="range" min="0" max="1" step="0.01" data-bind="value: alpha, valueUpdate: 'input'">
-                </td>
-                <td>
-                  <button type="button" class="cesium-button" data-bind="click: function() { $parent.raise($data, $index()); }, visible: $parent.canRaise($index())">
-                    ▲
-                  </button>
-                </td>
-                <td>
-                  <button type="button" class="cesium-button" data-bind="click: function() { $parent.lower($data, $index()); }, visible: $parent.canLower($index())">
-                    ▼
-                  </button>
-                </td>
-              </tr>
-              
-            </tbody>
-            <tbody>
-              <tr>
-                <td>目前地形</td>
-                <td>
-                  <select data-bind="options: terrainLayers, optionsText: 'name', value: terrainLayer"></select>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div> -->
         <div>
           <table>
             <tbody>
               <tr v-for="(layer, index) in  layersets.layers" 
                 :class="['align-items-center', (layer===layersets.upLayer)?'up':(layer===layersets.downLayer)?'down':'']">
-                <td class="col-auto"><input type="checkbox" v-model="layer.show"></td>
-                <td class="text-nowrap">{{layer.name}}</td>
+                <td class="col-auto"><span v-if="layersets.isSelectableLayer(layer)" class="me-2">底圖</span><input type="checkbox" v-model="layer.show"></td>
+                <td class="text-nowrap">
+                  <div v-show="!layersets.isSelectableLayer(layer)">{{layer.name}}</div>
+                  <select v-if="layersets.isSelectableLayer(layer)" v-model="selectLayerIndex">
+                    <option v-for="(baseLayer, index) in layersets.baseLayers" :value="index">{{ baseLayer.name }}</option>
+                  </select>
+                </td>
                 <td class="col-auto">
                   <input type="range" min="0" max="1" step="0.01" v-model="layer.alpha">
                 </td>
@@ -611,6 +529,14 @@
                 </td>
                 <td class="col-auto">
                   <button class="cesium-button" @click="layersets.lower(layer, index)" v-show="layersets.canLower(index)">▼</button>
+                </td>
+              </tr>
+              <tr>
+                <td>目前地形</td>
+                <td>
+                  <select v-model="terrainLayerIndex">
+                    <option v-for="(terrainL, index) in layersets.terrainLayers" :value="index">{{ terrainL.name }}</option>
+                  </select>
                 </td>
               </tr>
             </tbody>
