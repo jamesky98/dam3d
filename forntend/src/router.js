@@ -1,5 +1,5 @@
-import { createMemoryHistory, createRouter } from 'vue-router'
-
+import { createWebHistory, createMemoryHistory, createRouter } from 'vue-router'
+createWebHistory
 import cesiumView from './components/cesiumView.vue'
 import logInView from './components/logInView.vue'
 import userSetting from './components/userSetting.vue'
@@ -11,7 +11,7 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createMemoryHistory(),
+  history: createWebHistory(),//createMemoryHistory(),
   routes,
 })
 

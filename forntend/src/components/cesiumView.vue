@@ -5,6 +5,7 @@
     isProxy, toRaw, 
     computed
   } from "vue";
+  import router from '../router'
 
   import { 
     defined,
@@ -249,7 +250,7 @@
   async function initCesiumView(viewer,options) {
     // Initialize the Cesium Viewer in the HTML element with the `cesiumContainer` ID.
     viewer = new Viewer('cesiumContainer', {
-      animation: true,
+      animation: false,
       baseLayerPicker: false,
       // fullscreenButton: false,
       // vrButton: false,
@@ -258,7 +259,7 @@
       // infoBox: false,
       sceneModePicker: true,
       // selectionIndicator: false,
-      timeline: true,
+      timeline: false,
       navigationHelpButton: false,
       // navigationInstructionsInitiallyVisible: true,
       // scene3DOnly: false,
@@ -402,7 +403,7 @@
     terrainLayerChange(newVal);
   });
   function terrainLayerChange(terrainLayerIndex) {
-    console.log('terrainLayerIndex:',terrainLayerIndex);
+    // console.log('terrainLayerIndex:',terrainLayerIndex);
 
     // Handle changes to the drop-down base layer selector.
     const terrainLayer = layersets.value.terrainLayers[terrainLayerIndex]?layersets.value.terrainLayers[terrainLayerIndex]:null;
@@ -413,59 +414,26 @@
     // cs_viewer.scene.terrainProvider = toRaw(terrainLayer);
     return terrainLayer;
   }
-
+  function createButton(){
+    // 建立管理者登入按鈕
+    const adminButton = document.createElement('button');
+    adminButton.id = 'adminPage';
+    adminButton.innerHTML = '<i class="fas fa-tools"></i>';
+    adminButton.className = 'cesium-button cesium-toolbar-button';
+    adminButton.onclick = function() {
+      router.push("/logIn");
+    };
+    document.getElementsByClassName('cesium-viewer-toolbar')[0].appendChild(adminButton);
+  }
 // 頁面渲染完成後執行步驟
   onMounted( async function () {
+    
     cs_viewer = await initCesiumView(cs_viewer,'');
     // console.log(cs_viewer);
-    
+    createButton();
     imageryLayers = cs_viewer.imageryLayers;
     setupLayers();
     getIonResouse();
-
-    console.log(layersets.value.tilelayers);
-
-    // 將toolbar綁定至knockout
-    // const toolbar = document.getElementById("toolbar");
-    // knockout.applyBindings(viewModel, toolbar);
-    // 監聽selectedLayer變化
-    // knockout
-    //   .getObservable(viewModel, "selectedLayer")
-    //   .subscribe(function (baseLayer) {
-    //     // console.log('knockout: ',baseLayer);
-    //     // console.log('cs_viewer: ',cs_viewer.imageryLayers);
-    //     // Handle changes to the drop-down base layer selector.
-    //     let activeLayerIndex = 0;
-    //     const numLayers = viewModel.layers.length;
-    //     for (let i = 0; i < numLayers; ++i) {
-    //       if (viewModel.isSelectableLayer(viewModel.layers[i])) {
-    //         activeLayerIndex = i;
-    //         break;
-    //       }
-    //     }
-    //     // console.log('activeLayerIndex: ',activeLayerIndex);
-    //     const activeLayer = viewModel.layers[activeLayerIndex];
-    //     const show = activeLayer.show;
-    //     const alpha = activeLayer.alpha;
-    //     imageryLayers.remove(activeLayer, false);
-    //     imageryLayers.add(baseLayer, numLayers - activeLayerIndex - 1);
-    //     baseLayer.show = show;
-    //     baseLayer.alpha = alpha;
-    //     updateLayerList();
-        
-    //   });
-    // 監聽terrainLayer變化
-    // knockout
-  //     .getObservable(viewModel, "terrainLayer")
-  //     .subscribe(function (terrain) {
-  //       cs_viewer.scene.setTerrain(
-  //         new Terrain(terrain),
-  //       );
-
-  //     });
-
-  //     console.log('cesiumImgLayers: ',imageryLayers);
-  //     // console.log('viewModel: ',viewModel);
   });
 
   // 切換顯示圖層管理工具
@@ -546,10 +514,33 @@
       <button id="hiddenBtn" class="cesium-button" @click.stop="showLayerManager">
         <div class="btnVline"></div>
       </button>
-    </div>  
+    </div> 
   </MDBContainer>
 </template>
 <style scoped>
+#cesiumContainer{
+  height: calc(100% - var(--bottom-div));
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.cursorH{
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 0;
+  z-index: 100;
+}
+
+.cursorV{
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 0;
+  height: 100%;
+  z-index: 100;
+}
 #toolbar {
   display: flex;
   align-items: center;

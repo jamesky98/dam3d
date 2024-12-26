@@ -71,6 +71,23 @@ const typeDefs = [
 const app = express();
 const httpServer = http.createServer(app);
 
+const corsOptions = {
+  origin: '*', // 指定允許的來源
+  methods: 'GET,HEAD,POST,OPTIONS',
+  credentials: true,
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'apollo-require-preflight' // 添加此標頭
+  ],
+  optionsSuccessStatus: 200 // 確保返回 200
+};
+
+
+// 確保在所有其他中介之前使用 CORS
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // 處理所有的 OPTIONS 請求
+
 const server = new ApolloServer({
   typeDefs,
   resolvers,
@@ -86,28 +103,16 @@ const server = new ApolloServer({
 
 await server.start();
 
-const corsOptions = {
-  origin: '*',
-  methods: 'GET,HEAD,POST,OPTIONS',
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  preflightContinue: true,
-  optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
-}
-
-
-app.use('/',
-  cors(corsOptions),
-  bodyParser.json(),
-  expressMiddleware(server, {
-    context: async  ({ req }) => {
-      return {
-        ...req,
-        prisma,
-        userId: req && req.headers.authorization ? getUserId(req) : null,
-      };
-    },
-  }),
-);
+app.use(bodyParser.json());
+app.use(expressMiddleware(server, {
+  context: async ({ req }) => {
+    return {
+      ...req,
+      prisma,
+      userId: req && req.headers.authorization ? getUserId(req) : null,
+    };
+  },
+}));
 
 await new Promise(resolve => httpServer.listen({ port: process.env.PORT }, resolve));
 console.log(`🚀 Server ready at http://${process.env.IP}:${process.env.PORT}`);

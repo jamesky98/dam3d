@@ -11,7 +11,12 @@
     "preview": "vite preview --port 4173"
   },
   "dependencies": {
+    "@apollo/client": "^3.12.4",
+    "@vue/apollo-composable": "^4.2.1",
+    "apollo-upload-client": "^18.0.1",
     "cesium": "^1.124.0",
+    "graphql": "^16.10.0",
+    "graphql-tag": "^2.12.6",
     "mdb-vue-ui-kit": "git+https://oauth2:xfmb3NQ7xmmjona5VzHA@git.mdbootstrap.com/mdb/vue/mdb5/prd/mdb5-vue-ui-kit-pro-essential",
     "vue": "^3.5.13",
     "vue-router": "4"
