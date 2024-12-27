@@ -1,4 +1,6 @@
 <script setup>
+  import { useQuery, useMutation } from '@vue/apollo-composable';
+  import UsersGQL from "../graphql/Users";
   import { 
     ref, reactive, onMounted, 
     provide, inject, watch,
@@ -49,10 +51,12 @@
     MDBSpinner,  MDBAnimation,  MDBAlert,
     MDBModal,  MDBModalHeader,  MDBModalTitle,  MDBModalBody,  MDBModalFooter,
     MDBSwitch,
+    MDBAccordion, MDBAccordionItem,
   } from 'mdb-vue-ui-kit';
 
   //#region ======參數======
-    const layerManagerWidth = ref(null);
+    const layerMGShow = ref(false);
+    const activeItem = ref('stayOpen-collapseOne');
     // The URL on your server where CesiumJS's static files are hosted.
     window.CESIUM_BASE_URL = '/Cesium';
 
@@ -420,14 +424,62 @@
     adminButton.id = 'adminPage';
     adminButton.innerHTML = '<i class="fas fa-tools"></i>';
     adminButton.className = 'cesium-button cesium-toolbar-button';
+    adminButton.title = '管理者登入';
     adminButton.onclick = function() {
       router.push("/logIn");
     };
     document.getElementsByClassName('cesium-viewer-toolbar')[0].appendChild(adminButton);
   }
+  // 切換顯示圖層管理工具
+  function showLayerManager(){
+    const box = document.getElementById('layerManager');
+    // layerManagerWidth.value = box.scrollWidth;
+    if (box.classList.contains('toolvisible')){
+      // console.log('隱藏:',box.style.width)
+      box.classList.remove('toolvisible');
+      box.style.width = 0;
+      box.classList.add('toolhidden');
+    }else{
+      // console.log('顯示:',box.style.width)
+      box.classList.remove('toolhidden');
+      box.style.width = box.scrollWidth + 'px'; // 使用具體的內容寬度
+      
+      setTimeout(() => {
+        box.classList.add('toolvisible');
+      }, 10);
+    }
+  }
+  // 切換顯示圖層加載工具
+  function showLayerLoader(){
+    const box = document.getElementById('layerloader');
+    if (box.classList.contains('toolvisible')){
+      // console.log('隱藏:',box.style.width)
+      box.classList.remove('toolvisible');
+      box.style.width = 0;
+      box.classList.add('toolhidden');
+      layerMGShow.value = false;
+    }else{
+      // console.log('顯示:',box.style.width)
+      box.classList.remove('toolhidden');
+      box.style.width = '20rem'; // 使用具體的內容寬度
+      
+      setTimeout(() => {
+        box.classList.add('toolvisible');
+        layerMGShow.value = true;
+      }, 10);
+    }
+  }
+
+  // 取得後端訊息
+  const { mutate: getAlluser } = useMutation(UsersGQL.GETALLUSERs);
+  async function getSettionFormGrphql() {
+    let result = await getAlluser();
+    console.log('result:',result);
+  }
 // 頁面渲染完成後執行步驟
   onMounted( async function () {
-    
+    getSettionFormGrphql();
+
     cs_viewer = await initCesiumView(cs_viewer,'');
     // console.log(cs_viewer);
     createButton();
@@ -436,36 +488,7 @@
     getIonResouse();
   });
 
-  // 切換顯示圖層管理工具
-  function showLayerManager(){
-    const box = document.getElementById('layerManager');
-        
-    if (box.classList.contains('toolvisible')) {
-      layerManagerWidth.value = box.getBoundingClientRect().width;
-      // console.log('init:',box.style.width)
-      if (box.style.width){
-        box.style.width = 0;
-        box.classList.remove('toolvisible');
-        box.classList.add('toolhidden');
-      }else{
-        box.style.width = layerManagerWidth.value + 'px';
-        // console.log('layerManagerWidth: ',box.style.width)
-        box.classList.add('addTrans');
-        setTimeout(() => {
-          box.style.width = 0;
-          box.classList.remove('toolvisible');
-          box.classList.add('toolhidden');
-        }, 0);
-      }
-    } else {
-      // console.log('toolhidden',layerManagerWidth.value)
-      box.classList.remove('toolhidden');
-      box.style.width = layerManagerWidth.value + 'px'; // 使用具體的內容寬度
-      setTimeout(() => {
-        box.classList.add('toolvisible');
-      }, 10);
-    }
-  }
+  
 </script>
 
 <template>
@@ -475,49 +498,108 @@
       <!-- <div class="cursorV border-end border-danger"></div> -->
     </div>
     <div id="loadingOverlay"><h1>Loading...</h1></div>
+    
+    <button title="加載圖層" class="layerMG cesium-button cesium-toolbar-button" @click.stop="showLayerLoader">
+      <i v-if="layerMGShow" class="fas fa-folder-open"></i>
+      <i v-else class="fas fa-folder-plus"></i>
+    </button>
     <div id="toolbar">
-      <div id="layerManager" class="toolvisible">
-        <div>
-          <table>
-            <tbody>
-              <tr v-for="(layer, index) in  layersets.layers" 
-                :class="['align-items-center', (layer===layersets.upLayer)?'up':(layer===layersets.downLayer)?'down':'']">
-                <td class="col-auto"><span v-if="layersets.isSelectableLayer(layer)" class="me-2">底圖</span><input type="checkbox" v-model="layer.show"></td>
-                <td class="text-nowrap">
-                  <div v-show="!layersets.isSelectableLayer(layer)">{{layer.name}}</div>
-                  <select v-if="layersets.isSelectableLayer(layer)" v-model="selectLayerIndex">
-                    <option v-for="(baseLayer, index) in layersets.baseLayers" :value="index">{{ baseLayer.name }}</option>
-                  </select>
-                </td>
-                <td class="col-auto">
-                  <input type="range" min="0" max="1" step="0.01" v-model="layer.alpha">
-                </td>
-                <td class="col-auto">
-                  <button class="cesium-button" @click="layersets.raise(layer, index)" v-show="layersets.canRaise(index)">▲</button>
-                </td>
-                <td class="col-auto">
-                  <button class="cesium-button" @click="layersets.lower(layer, index)" v-show="layersets.canLower(index)">▼</button>
-                </td>
-              </tr>
+      <div id="layerloader" class="toolhidden addTrans">
+        <!-- 搜尋區塊 -->
+        <div class="navbar navbar-dark bg-dark">
+          <div id="layersearcher" class="container-fluid">
+            <div class="d-flex input-group w-auto">
+              <input
+                type="search"
+                class="form-control rounded"
+                placeholder="Search"
+                aria-label="Search"
+                aria-describedby="search-addon"
+              />
+              <button class="input-group-text border-0" id="search-addon">
+                <i class="fas fa-search"></i>
+              </button>
+            </div>
+          </div>
+          <table class="">
+            <tbody class="border-top">
               <tr>
-                <td>目前地形</td>
-                <td>
-                  <select v-model="terrainLayerIndex">
-                    <option v-for="(terrainL, index) in layersets.terrainLayers" :value="index">{{ terrainL.name }}</option>
-                  </select>
-                </td>
+                <td>X</td>
+                <td>XX</td>
+                <td>X</td>
+                <td>X</td>
               </tr>
             </tbody>
           </table>
         </div>
+        
+        <!-- 圖層加載區塊 -->
+        <MDBAccordion v-model="activeItem" stayOpen>
+          <MDBAccordionItem headerTitle="Accordion Item #1" collapseId="stayOpen-collapseOne">
+            1
+          </MDBAccordionItem>
+          <MDBAccordionItem headerTitle="Accordion Item #2" collapseId="stayOpen-collapseTwo">
+            2
+          </MDBAccordionItem>
+          <MDBAccordionItem headerTitle="Accordion Item #3" collapseId="stayOpen-collapseThree">
+            3
+          </MDBAccordionItem>
+        </MDBAccordion>
       </div>
-      <button id="hiddenBtn" class="cesium-button" @click.stop="showLayerManager">
-        <div class="btnVline"></div>
-      </button>
+      <!-- 圖層管理區塊 -->
+      <div class="align-self-start grid-container">
+        <div id="layerManager" class="addTrans toolhidden">
+          <div>
+            <table>
+              <tbody>
+                <tr v-for="(layer, index) in  layersets.layers" 
+                  :class="['align-items-center', (layer===layersets.upLayer)?'up':(layer===layersets.downLayer)?'down':'']">
+                  <td class="col-auto"><span v-if="layersets.isSelectableLayer(layer)" class="me-2">底圖</span><input type="checkbox" v-model="layer.show"></td>
+                  <td class="text-nowrap">
+                    <div v-show="!layersets.isSelectableLayer(layer)">{{layer.name}}</div>
+                    <select v-if="layersets.isSelectableLayer(layer)" v-model="selectLayerIndex">
+                      <option v-for="(baseLayer, index) in layersets.baseLayers" :value="index">{{ baseLayer.name }}</option>
+                    </select>
+                  </td>
+                  <td class="col-auto">
+                    <input type="range" min="0" max="1" step="0.01" v-model="layer.alpha">
+                  </td>
+                  <td class="col-auto">
+                    <button class="cesium-button" @click="layersets.raise(layer, index)" v-show="layersets.canRaise(index)">▲</button>
+                  </td>
+                  <td class="col-auto">
+                    <button class="cesium-button" @click="layersets.lower(layer, index)" v-show="layersets.canLower(index)">▼</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>目前地形</td>
+                  <td>
+                    <select v-model="terrainLayerIndex">
+                      <option v-for="(terrainL, index) in layersets.terrainLayers" :value="index">{{ terrainL.name }}</option>
+                    </select>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <button id="hiddenBtn" class="cesium-button" @click.stop="showLayerManager">
+          <div class="btnVline"></div>
+        </button>
+      </div>
     </div> 
   </MDBContainer>
 </template>
 <style scoped>
+.navbar{
+  border-radius: 4px;
+  margin-bottom: 0.2rem;
+}
+
+#layersearcher{
+  padding-bottom: var(--mdb-navbar-padding-y);
+}
+
 #cesiumContainer{
   height: calc(100% - var(--bottom-div));
   position: absolute;
@@ -543,15 +625,55 @@
 }
 #toolbar {
   display: flex;
-  align-items: center;
   color: white;
   position: absolute;
   max-width: calc(100% - 3rem);
   max-height: calc(100% - 150px);
-  top: 2rem;
+  top: 3rem;
   left: 0.5rem;
-  /* overflow: hidden; */
   z-index: 2;
+}
+
+/* 圖層按鈕 */
+.layerMG{
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  
+}
+/* 手風琴自訂樣式 */
+.accordion{
+  --mdb-accordion-border-radius:4px;
+  --mdb-accordion-color: white;
+  --mdb-accordion-bg: rgba(42, 42, 42, 0.8);
+  --mdb-accordion-border-color: rgba(42, 42, 42, 0.8);
+  --mdb-accordion-border-radius: 4px;
+  --mdb-accordion-inner-border-radius: 4px;
+  --mdb-accordion-btn-color: white;
+  --mdb-accordion-btn-bg: rgba(42, 42, 42, 0.8);
+  --mdb-accordion-active-color: white;
+  --mdb-accordion-active-bg: rgba(42, 42, 42, 0.8); 
+  text-wrap: nowrap;
+}
+
+/* 圖層管理加載工具 */
+#layerloader{
+  display: block;
+  overflow: hidden;
+  width: 0;
+  margin-right: 0.2rem;
+
+}
+
+/* 圖層管理工具 */
+/* 外包容器設定 */
+.grid-container{
+  display: grid;
+  grid-template-rows: auto auto; /* 自動高度的兩行 */
+  position: relative; /* 使子元素可以使用絕對定位 */
+}
+#layerManager{
+  width: 0;
 }
 
 #layerManager input {
@@ -597,11 +719,18 @@ table tr > td:nth-child(2){
   border: 0;
   overflow: hidden;
 }
+
+/* 收合動畫效果 */
 .addTrans{
-  transition: width 1s ease; /* 添加過渡效果 */
+  transition: width 0.5s ease; /* 添加過渡效果 */
 }
 
-
+#layerManager:after{
+  content: '';
+  display: block;
+  height: 100%; /* 繼承 layerManager 的高度 */
+}
+/* 圖層收合開關 */
 #hiddenBtn {
   display: flex;
   align-items: center; /* 垂直置中 */
@@ -610,8 +739,9 @@ table tr > td:nth-child(2){
   margin: 0;
   padding: 0;
   min-height: 3rem;
-  height: calc(100% - 2rem);
+  top: 1rem;
   right: -1rem;
+  height: calc(100% - 2rem);
   width: 1rem;
   background-color: rgba(42, 42, 42, 0.8);
   border-radius: 0 0.5rem 0.5rem 0;

@@ -33,16 +33,16 @@ async function errorHandle(e,infomsg,alert1,msgColor){
 
 function logOut() {
   console.log("logOut")
-  localStorage.removeItem("AUTH_TOKEN");
-  localStorage.removeItem("USER_NAME");
+  localStorage.removeItem("DAM3D_AUTH_TOKEN");
+  localStorage.removeItem("DAM3D_USER_NAME");
   router.push("/");
 }
 
 function logIn(result) {
   let getData = result.data.login;
   if (getData.user.active === 1) {
-    localStorage.setItem("AUTH_TOKEN", result.data.login.token);
-    localStorage.setItem("USER_NAME", result.data.login.user.user_name);
+    localStorage.setItem("DAM3D_AUTH_TOKEN", result.data.login.token);
+    localStorage.setItem("DAM3D_USER_NAME", result.data.login.user.user_name);
     // console.log("localStorage In")
     router.push("/userSetting");
   } else {

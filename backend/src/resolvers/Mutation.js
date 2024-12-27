@@ -22,10 +22,27 @@ async function checktoken(parent, args, context) {
   return chkUserId(context);;
 }
 
+async function allusers(parent, args, context) {
+  // if (chkUserId(context)){
+    return await context.prisma.user.findMany();
+  // }
+}
 /**
  * @param {any} parent
  * @param {{ prisma: Prisma }} context
  */
+// 建立JWT token
+function jwtSign(user, tlimit) {
+  return jwt.sign(
+    {
+      userId: user.user_name,
+      userAc: user.active,
+      userRole: user.role,
+      expiry: tlimit,
+    },
+    APP_SECRET
+  )
+}
 async function signup(parent, args, context, info) {
   // 1
   const password = await bcrypt.hash(args.user_password, 10);
@@ -38,15 +55,7 @@ async function signup(parent, args, context, info) {
   // 3
   const now = new Date();
   const Tlimit = now.getTime() + parseInt(process.env.TTL);
-  const token = jwt.sign(
-    {
-      userId: user.user_name,
-      userAc: user.active,
-      userRole: user.role,
-      expiry: Tlimit,
-    },
-    APP_SECRET
-  );
+  const token = jwtSign(user, Tlimit);
 
   // 4
   return {
@@ -77,15 +86,7 @@ async function login(parent, args, context, info) {
   }
   const now = new Date();
   const Tlimit = now.getTime() + parseInt(process.env.TTL);
-  const token = jwt.sign(
-    {
-      userId: user.user_name,
-      userAc: user.active,
-      userRole: user.role,
-      expiry: Tlimit,
-    },
-    APP_SECRET
-  );
+  const token = jwtSign(user, Tlimit);
 
   // 3
   return {
@@ -207,6 +208,7 @@ async function uploadFile(parent, args, context) {
 }
 
 export default {
+  allusers,
   checktoken,
   signup,
   login,
