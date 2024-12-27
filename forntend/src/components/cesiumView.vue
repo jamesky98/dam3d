@@ -521,7 +521,7 @@
               </button>
             </div>
           </div>
-          <table class="">
+          <table class="d-none">
             <tbody class="border-top">
               <tr>
                 <td>X</td>
