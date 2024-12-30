@@ -492,34 +492,125 @@
     // 取得layer class
     let fetch1_res = fetch1.data.getLayerSettins;
     let layerClass = fetch1_res.find(x => x.variable === 'layer_class').value.data;
-
+    
     // 取得layer Info
-    let fetch2_res = fetch2.data.getAllLayers;
+    let allLayerInfo = fetch2.data.getAllLayers;
+    
+    let defaultLayer = fetch1_res.find(x => x.variable === 'layer_default').value;
+    await updateLayerManager(defaultLayer, allLayerInfo);
+
 
     LayerToLoad.value = layerClass.map(x => {
       return {
         className: x,
-        classLayers: fetch2_res.filter( layer => { 
-          if (layer.class_type === x) return layer;
+        classLayers: allLayerInfo.filter( layerInfo => { 
+          if (layerInfo.class_type === x) return layerInfo;
         }),
       }
     });
 
     // console.log('settings: ',settings);
     console.log('layerClass: ',layerClass);
-    console.log('fetch2_res: ',fetch2_res);
+    console.log('allLayerInfo: ',allLayerInfo);
     console.log('LayerToLoad: ',LayerToLoad.value);
   }
+
+  async function updateLayerManager(params, allLayerInfo){ 
+    let baseSet = params.baselayer;
+    let terrainSet = params.terrainlayer;
+    let imgSet = params.imglayer;
+    let tileSet = params.primitiveslayer;
+    let entireSet = params.dataSource;
+
+    // 清空原有圖層
+
+
+    // 加載預設圖層
+    baseSet.forEach(async (layerid) => {
+      // console.log('layerid:',layerid);
+      let layer = allLayerInfo.find(x => x.id === layerid+'');
+      console.log('baseLayer:',layer);
+      switch (layer.source_type) {
+        case 'ion':
+          await addBaseLayerOption(layer.name, IonImageryProvider.fromAssetId(layer.link_info.assetId));
+          break;
+        case 'url':
+          await addBaseLayerOption(layer.name, new WebMapTileServiceImageryProvider(layer.link_info));
+          break;
+        case 'javascript':
+          let codestr = 'new ' + layer.link_info.model + '()';
+          await addBaseLayerOption(layer.name, eval(codestr));
+          break;
+      }
+    });
+
+    terrainSet.forEach(async (layerid) => {
+      let layer = allLayerInfo.find(x => x.id === layerid+'');
+      console.log('terrainLayer:',layer);
+      switch (layer.source_type) {
+        case 'ion':
+          await addTerrainLayerOption(layer.name, CesiumTerrainProvider.fromIonAssetId(layer.link_info.assetId));
+          break;
+        case 'url':
+          // await addTerrainLayerOption(layer.name, new EllipsoidTerrainProvider());
+          break;
+        case 'javascript':
+          // let codestr = 'new ' + layer.link_info.model + '()';
+          // console.log('codestr:',codestr);
+          // await addTerrainLayerOption(layer.name, eval(codestr));
+          // break;
+      }
+    });
+    addTerrainLayerOption('無',new EllipsoidTerrainProvider());
+    terrainLayerChange(0);
+
+    imgSet.forEach(async (layerid) => {
+      let layer = allLayerInfo.find(x => x.id === layerid+'');
+      console.log('imgLayer:',layer);
+      switch (layer.source_type) {
+        case 'ion':
+          await addAdditionalLayerOption(layer.name, IonImageryProvider.fromAssetId(layer.link_info.assetId), 1.0, false);
+          break;
+        case 'url':
+          await addAdditionalLayerOption(layer.name, new WebMapTileServiceImageryProvider(layer.link_info), 1.0, false);
+          break;
+        case 'javascript':
+          let codestr = 'new ' + layer.link_info.model + '()';
+          await addAdditionalLayerOption(layer.name, eval(codestr), 1.0, false);
+          break;
+      }
+    });
+
+    tileSet.forEach(async (layerid) => {
+      let layer = allLayerInfo.find(x => x.id === layerid+'');
+      console.log('tileLayer:',layer);
+      switch (layer.source_type) {
+        case 'ion':
+          await add3DTilesLayerOption(layer.name, layer.link_info.assetId, 1, false);
+          break;
+        case 'url':
+          // await add3DTilesLayerOption(layer.name, layer.link_info.assetId, 1, false);
+          break;
+        case 'javascript':
+          // let codestr = 'new ' + layer.link_info.model + '()';
+          // await add3DTilesLayerOption(layer.name, eval(codestr), 1, false);
+          break;
+      }
+    });
+
+  }
+
 // 頁面渲染完成後執行步驟
   onMounted( async function () {
-    getSettionFormGrphql();
+    
 
     cs_viewer = await initCesiumView(cs_viewer,'');
     // console.log(cs_viewer);
     createButton();
     imageryLayers = cs_viewer.imageryLayers;
-    setupLayers();
-    getIonResouse();
+    await getSettionFormGrphql();
+    // setupLayers();
+    // getIonResouse();
   });
 
   
@@ -570,29 +661,25 @@
         <!-- 圖層加載區塊 -->
         <MDBAccordion v-model="activeItem" stayOpen>
           <MDBAccordionItem v-for="(LClass, index) in LayerToLoad" :headerTitle="LClass.className" :collapseId='"Accordion"+index'>
-            <table class="w-100">
-              <tbody>
-                <tr v-for="layer in LClass.classLayers" class="align-items-center">
-                  <td class="col-layertype" :title="layer.layer_type">
-                    <i v-if="layer.layer_type==='IMAGERY'"  class="fas fa-image"></i>
-                    <i v-if="layer.layer_type==='TERRAIN'" class="fas fa-chart-area"></i>
-                    <i v-if="layer.layer_type==='3DTILES'" class="fas fa-city"></i>
-                  </td>
-                  <td class="col-layername text-nowrap">
-                    <span class="d-inline-block text-truncate">
-                      {{layer.name}}
-                    </span>
-                  </td>
-                  <td class="col-layerwork">
-                    <button v-if="layer.loaded" class="cesium-button cesium-toolbar-button" @click.stop="removeLayerBtn($event)">移除</button>
-                    <button v-else class="cesium-button cesium-toolbar-button" @click.stop="addLayerBtn($event)">加入</button>
-                  </td>
-                  <td class="col-layerdefault">
-                    <MDBSwitch label="設為底圖"/>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <MDBContainer fluid class="p-0">
+              <div v-for="layer in LClass.classLayers" class="d-flex align-items-center">
+                <div class="col-layertype">
+                  <i v-if="layer.layer_type==='IMAGERY'"  class="fas fa-image"></i>
+                  <i v-if="layer.layer_type==='TERRAIN'" class="fas fa-chart-area"></i>
+                  <i v-if="layer.layer_type==='3DTILES'" class="fas fa-city"></i>
+                </div>
+                <div class="flex-grow-1 text-truncate">
+                  {{layer.name}}
+                </div>
+                <div class="col-layerwork">
+                  <button v-if="layer.loaded" class="cesium-button cesium-toolbar-button bg-danger bg-gradient text-white" @click.stop="removeLayerBtn($event)">移除</button>
+                  <button v-else class="cesium-button cesium-toolbar-button" @click.stop="addLayerBtn($event)">加入</button>
+                </div>
+                <div class="col-layerdefault">
+                  <MDBSwitch label="設為底圖"/>
+                </div>
+              </div>
+            </MDBContainer>
           </MDBAccordionItem>
         </MDBAccordion>
       </div>
@@ -708,6 +795,7 @@ table{
   --mdb-accordion-btn-bg: rgba(42, 42, 42, 0.8);
   --mdb-accordion-active-color: white;
   --mdb-accordion-active-bg: rgba(42, 42, 42, 0.8); 
+  --mdb-accordion-body-padding-x: 1rem;
   text-wrap: nowrap;
 }
 
@@ -719,16 +807,9 @@ table{
   overflow-y: auto; /* Y軸自動出現滾動條 */
   overflow-x: hidden; /* 隱藏X軸滾動條 */
 }
-#layerloader tr {
-    display: flex; /* 使用flexbox */
-}
 .col-layertype {
     width: 2rem; /* 設定第一欄寬度為2rem */
     min-width: 0; /* 解除最小寬度限制 */
-}
-
-.col-layername {
-    flex: 1; /* 使第二欄彈性擴展 */
 }
 
 .col-layerwork {
@@ -740,7 +821,7 @@ table{
   padding: 0 0.5rem;
 } 
 .col-layerdefault {
-    width: 6rem; /* 第三欄自動調整寬度 */
+    width: 7rem; /* 第三欄自動調整寬度 */
     min-width: 0; /* 解除最小寬度限制 */
 }
 
