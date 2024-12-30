@@ -20,3 +20,19 @@ model user {
   user_name2        String?   @db.VarChar(255)
   settings          Json?
 }
+
+model settings {
+  variable String @id @db.VarChar(128)
+  value    Json?
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model lyinfo {
+  id           Int     @id @unique(map: "id_UNIQUE") @default(autoincrement())
+  name         String  @db.VarChar(255)
+  class_type   String? @db.VarChar(45)
+  source_type  String? @db.VarChar(45)
+  link_info    Json?
+  layer_type   String? @db.VarChar(45)
+  load_setting Json?
+}

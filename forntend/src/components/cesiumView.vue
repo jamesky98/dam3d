@@ -1,6 +1,7 @@
 <script setup>
   import { useQuery, useMutation } from '@vue/apollo-composable';
   import UsersGQL from "../graphql/Users";
+  import LSetGQL from "../graphql/dam3d";
   import { 
     ref, reactive, onMounted, 
     provide, inject, watch,
@@ -50,13 +51,13 @@
     MDBSelect,  MDBDatepicker,  MDBBtn,  MDBPopconfirm,
     MDBSpinner,  MDBAnimation,  MDBAlert,
     MDBModal,  MDBModalHeader,  MDBModalTitle,  MDBModalBody,  MDBModalFooter,
-    MDBSwitch,
+    MDBSwitch, MDBScrollbar,
     MDBAccordion, MDBAccordionItem,
   } from 'mdb-vue-ui-kit';
 
   //#region ======參數======
     const layerMGShow = ref(false);
-    const activeItem = ref('stayOpen-collapseOne');
+    const activeItem = ref('Accordion0');
     // The URL on your server where CesiumJS's static files are hosted.
     window.CESIUM_BASE_URL = '/Cesium';
 
@@ -343,12 +344,12 @@
     })
     .then(response => response.json())
     .then(data => {
-      // console.log('Ion assets:', data);
+      console.log('Ion assets:', data);
       data.items.forEach(asset => {
         // 根據資產類型載入
         switch (asset.type.toUpperCase()) {
           case 'IMAGERY':
-            addBaseLayerOption(asset.name, IonImageryProvider.fromAssetId(2));
+            addBaseLayerOption(asset.name, IonImageryProvider.fromAssetId(asset.id));
             // console.log(`Loaded imagery asset: ${asset.name}`);
             break;
 
@@ -437,16 +438,25 @@
     if (box.classList.contains('toolvisible')){
       // console.log('隱藏:',box.style.width)
       box.classList.remove('toolvisible');
+      box.classList.add('overflow-x-hidden');
+      box.classList.remove('overflow-x-auto');
       box.style.width = 0;
       box.classList.add('toolhidden');
     }else{
       // console.log('顯示:',box.style.width)
       box.classList.remove('toolhidden');
-      box.style.width = box.scrollWidth + 'px'; // 使用具體的內容寬度
+      box.classList.add('overflow-x-hidden');
+        box.classList.remove('overflow-x-auto');
+      let pBoxWidth = document.body.clientWidth-30;
+      let useWidth = box.scrollWidth > pBoxWidth ? pBoxWidth : box.scrollWidth;
+      
+      box.style.width = useWidth + 'px'; // 使用具體的內容寬度
       
       setTimeout(() => {
         box.classList.add('toolvisible');
-      }, 10);
+        box.classList.remove('overflow-x-hidden');
+        box.classList.add('overflow-x-auto');
+      }, 500);
     }
   }
   // 切換顯示圖層加載工具
@@ -461,7 +471,8 @@
     }else{
       // console.log('顯示:',box.style.width)
       box.classList.remove('toolhidden');
-      box.style.width = '20rem'; // 使用具體的內容寬度
+      // box.style.width = box.scrollWidth + 'px';
+      box.style.width = '30rem'; // 使用具體的內容寬度
       
       setTimeout(() => {
         box.classList.add('toolvisible');
@@ -471,10 +482,33 @@
   }
 
   // 取得後端訊息
-  const { mutate: getAlluser } = useMutation(UsersGQL.GETALLUSERs);
+  const LayerToLoad = ref([]);
+  const { mutate: getLayerSettings } = useMutation(LSetGQL.GETLAYERSETTINS);
+  const { mutate: getAllLayers } = useMutation(LSetGQL.GETALLLAYERS);
   async function getSettionFormGrphql() {
-    let result = await getAlluser();
-    console.log('result:',result);
+    let fetch1 = await getLayerSettings();
+    let fetch2 = await getAllLayers();
+
+    // 取得layer class
+    let fetch1_res = fetch1.data.getLayerSettins;
+    let layerClass = fetch1_res.find(x => x.variable === 'layer_class').value.data;
+
+    // 取得layer Info
+    let fetch2_res = fetch2.data.getAllLayers;
+
+    LayerToLoad.value = layerClass.map(x => {
+      return {
+        className: x,
+        classLayers: fetch2_res.filter( layer => { 
+          if (layer.class_type === x) return layer;
+        }),
+      }
+    });
+
+    // console.log('settings: ',settings);
+    console.log('layerClass: ',layerClass);
+    console.log('fetch2_res: ',fetch2_res);
+    console.log('LayerToLoad: ',LayerToLoad.value);
   }
 // 頁面渲染完成後執行步驟
   onMounted( async function () {
@@ -504,7 +538,7 @@
       <i v-else class="fas fa-folder-plus"></i>
     </button>
     <div id="toolbar">
-      <div id="layerloader" class="toolhidden addTrans">
+      <div id="layerloader" class=" toolhidden addTrans">
         <!-- 搜尋區塊 -->
         <div class="navbar navbar-dark bg-dark">
           <div id="layersearcher" class="container-fluid">
@@ -535,14 +569,21 @@
         
         <!-- 圖層加載區塊 -->
         <MDBAccordion v-model="activeItem" stayOpen>
-          <MDBAccordionItem headerTitle="Accordion Item #1" collapseId="stayOpen-collapseOne">
-            1
-          </MDBAccordionItem>
-          <MDBAccordionItem headerTitle="Accordion Item #2" collapseId="stayOpen-collapseTwo">
-            2
-          </MDBAccordionItem>
-          <MDBAccordionItem headerTitle="Accordion Item #3" collapseId="stayOpen-collapseThree">
-            3
+          <MDBAccordionItem v-for="(LClass, index) in LayerToLoad" :headerTitle="LClass.className" :collapseId='"Accordion"+index'>
+            <table class="w-100">
+              <tbody>
+                <tr v-for="layer in LClass.classLayers">
+                  <td class="narrow" :title="layer.layer_type">
+                    <i v-if="layer.layer_type==='IMAGERY'"  class="fas fa-image"></i>
+                    <i v-if="layer.layer_type==='TERRAIN'" class="fas fa-chart-area"></i>
+                    <i v-if="layer.layer_type==='3DTILES'" class="fas fa-city"></i>
+                  </td>
+                  <td class="flexible text-nowrap">{{layer.name}}</td>
+                  <td class="small">{{layer.layer_type}}</td>
+                  <td class="small">{{layer.source_type}}</td>
+                </tr>
+              </tbody>
+            </table>
           </MDBAccordionItem>
         </MDBAccordion>
       </div>
@@ -554,20 +595,20 @@
               <tbody>
                 <tr v-for="(layer, index) in  layersets.layers" 
                   :class="['align-items-center', (layer===layersets.upLayer)?'up':(layer===layersets.downLayer)?'down':'']">
-                  <td class="col-auto"><span v-if="layersets.isSelectableLayer(layer)" class="me-2">底圖</span><input type="checkbox" v-model="layer.show"></td>
+                  <td class=""><span v-if="layersets.isSelectableLayer(layer)" class="me-2">底圖</span><input type="checkbox" v-model="layer.show"></td>
                   <td class="text-nowrap">
                     <div v-show="!layersets.isSelectableLayer(layer)">{{layer.name}}</div>
                     <select v-if="layersets.isSelectableLayer(layer)" v-model="selectLayerIndex">
                       <option v-for="(baseLayer, index) in layersets.baseLayers" :value="index">{{ baseLayer.name }}</option>
                     </select>
                   </td>
-                  <td class="col-auto">
+                  <td class="">
                     <input type="range" min="0" max="1" step="0.01" v-model="layer.alpha">
                   </td>
-                  <td class="col-auto">
+                  <td class="">
                     <button class="cesium-button" @click="layersets.raise(layer, index)" v-show="layersets.canRaise(index)">▲</button>
                   </td>
-                  <td class="col-auto">
+                  <td class="">
                     <button class="cesium-button" @click="layersets.lower(layer, index)" v-show="layersets.canLower(index)">▼</button>
                   </td>
                 </tr>
@@ -594,6 +635,11 @@
 .navbar{
   border-radius: 4px;
   margin-bottom: 0.2rem;
+}
+
+table{
+  border-collapse: collapse; /* 合併邊框 */
+  table-layout: fixed; /* 固定表格佈局 */
 }
 
 #layersearcher{
@@ -659,21 +705,63 @@
 /* 圖層管理加載工具 */
 #layerloader{
   display: block;
-  overflow: hidden;
   width: 0;
   margin-right: 0.2rem;
-
+  overflow-y: auto; /* Y軸自動出現滾動條 */
+  overflow-x: hidden; /* 隱藏X軸滾動條 */
 }
+#layerloader tr {
+    display: flex; /* 使用flexbox */
+}
+.narrow {
+    width: 2rem; /* 設定第一欄寬度為2rem */
+    min-width: 0; /* 解除最小寬度限制 */
+}
+
+.flexible {
+    flex: 1; /* 使第二欄彈性擴展 */
+}
+
+.small {
+    width: auto; /* 第三欄自動調整寬度 */
+    white-space: nowrap; /* 防止文字換行 */
+    min-width: 0; /* 解除最小寬度限制 */
+}
+
 
 /* 圖層管理工具 */
 /* 外包容器設定 */
 .grid-container{
   display: grid;
-  grid-template-rows: auto auto; /* 自動高度的兩行 */
+  /* grid-template-rows: auto auto; 自動高度的兩行 */
   position: relative; /* 使子元素可以使用絕對定位 */
 }
+#layerManager:after{
+  content: '';
+  display: block;
+  height: 0; /* 繼承 layerManager 的高度 */
+}
+
 #layerManager{
+  background: rgba(42, 42, 42, 0.8);
+  padding: 0;
+  border: 0;
   width: 0;
+  border-radius: 4px;
+  /* overflow-x: auto; */
+  overflow-y: auto;
+}
+
+.overflow-x-hidden{
+  overflow-x: hidden;
+}
+.overflow-x-auto{
+  overflow-x: auto;
+}
+
+#layerManager>div{
+  padding: 4px;
+  
 }
 
 #layerManager input {
@@ -693,8 +781,8 @@
   transition: transform 0.4s ease-out;
 }
 
-table tr > td:nth-child(1),
-table tr > td:nth-child(2){
+#layerManager table tr > td:nth-child(1),
+#layerManager table tr > td:nth-child(2){
   min-width: 5rem;
 }
 
@@ -708,28 +796,13 @@ table tr > td:nth-child(2){
   transition: none;
 }
 
-#layerManager>div{
-  background: rgba(42, 42, 42, 0.8);
-  padding: 4px;
-  border-radius: 4px;
-}
 
-#layerManager{
-  padding: 0;
-  border: 0;
-  overflow: hidden;
-}
 
 /* 收合動畫效果 */
 .addTrans{
   transition: width 0.5s ease; /* 添加過渡效果 */
 }
 
-#layerManager:after{
-  content: '';
-  display: block;
-  height: 100%; /* 繼承 layerManager 的高度 */
-}
 /* 圖層收合開關 */
 #hiddenBtn {
   display: flex;

@@ -207,6 +207,22 @@ async function uploadFile(parent, args, context) {
   return { filename: upfilename, mimetype: mimetype, encoding: encoding };
 }
 
+async function getLayerSettins(parent, args, context) {
+  // if (!chkUserId(context)) {
+  //   throw new Error("未經授權");
+  // }
+  const result = await context.prisma.settings.findMany();
+  return result;
+}
+
+async function getAllLayers(parent, args, context) {
+  // if (!chkUserId(context)) {
+  //   throw new Error("未經授權");
+  // }
+  const result = await context.prisma.lyinfo.findMany();
+  return result;
+}
+
 export default {
   allusers,
   checktoken,
@@ -217,4 +233,6 @@ export default {
   chkUserByName,
   changePASSWord,
   uploadFile,
+  getLayerSettins,
+  getAllLayers,
 };

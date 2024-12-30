@@ -50,7 +50,10 @@ type Mutation {
       subpath:String!
       newfilename: String!,
     ): File!
-
+  # ================
+  # layer settings
+  getLayerSettins: [LayerSettins!]!
+  getAllLayers: [LayerInfo!]!
 }
 
 type AuthPayload {
@@ -67,4 +70,19 @@ type User {
   role: Int
   user_name2: String!
   user_updated_time: Date
+}
+
+type LayerSettins {
+  variable: String
+  value: JSONObject
+}
+
+type LayerInfo {
+  id: ID!
+  name: String
+  class_type: String
+  source_type: String
+  link_info: JSONObject
+  layer_type: String
+  load_setting: JSONObject
 }
