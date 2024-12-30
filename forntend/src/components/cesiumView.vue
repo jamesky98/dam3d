@@ -572,15 +572,24 @@
           <MDBAccordionItem v-for="(LClass, index) in LayerToLoad" :headerTitle="LClass.className" :collapseId='"Accordion"+index'>
             <table class="w-100">
               <tbody>
-                <tr v-for="layer in LClass.classLayers">
-                  <td class="narrow" :title="layer.layer_type">
+                <tr v-for="layer in LClass.classLayers" class="align-items-center">
+                  <td class="col-layertype" :title="layer.layer_type">
                     <i v-if="layer.layer_type==='IMAGERY'"  class="fas fa-image"></i>
                     <i v-if="layer.layer_type==='TERRAIN'" class="fas fa-chart-area"></i>
                     <i v-if="layer.layer_type==='3DTILES'" class="fas fa-city"></i>
                   </td>
-                  <td class="flexible text-nowrap">{{layer.name}}</td>
-                  <td class="small">{{layer.layer_type}}</td>
-                  <td class="small">{{layer.source_type}}</td>
+                  <td class="col-layername text-nowrap">
+                    <span class="d-inline-block text-truncate">
+                      {{layer.name}}
+                    </span>
+                  </td>
+                  <td class="col-layerwork">
+                    <button v-if="layer.loaded" class="cesium-button cesium-toolbar-button" @click.stop="removeLayerBtn($event)">移除</button>
+                    <button v-else class="cesium-button cesium-toolbar-button" @click.stop="addLayerBtn($event)">加入</button>
+                  </td>
+                  <td class="col-layerdefault">
+                    <MDBSwitch label="設為底圖"/>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -595,20 +604,20 @@
               <tbody>
                 <tr v-for="(layer, index) in  layersets.layers" 
                   :class="['align-items-center', (layer===layersets.upLayer)?'up':(layer===layersets.downLayer)?'down':'']">
-                  <td class=""><span v-if="layersets.isSelectableLayer(layer)" class="me-2">底圖</span><input type="checkbox" v-model="layer.show"></td>
+                  <td><span v-if="layersets.isSelectableLayer(layer)" class="me-2">底圖</span><input type="checkbox" v-model="layer.show"></td>
                   <td class="text-nowrap">
                     <div v-show="!layersets.isSelectableLayer(layer)">{{layer.name}}</div>
                     <select v-if="layersets.isSelectableLayer(layer)" v-model="selectLayerIndex">
                       <option v-for="(baseLayer, index) in layersets.baseLayers" :value="index">{{ baseLayer.name }}</option>
                     </select>
                   </td>
-                  <td class="">
+                  <td>
                     <input type="range" min="0" max="1" step="0.01" v-model="layer.alpha">
                   </td>
-                  <td class="">
+                  <td>
                     <button class="cesium-button" @click="layersets.raise(layer, index)" v-show="layersets.canRaise(index)">▲</button>
                   </td>
-                  <td class="">
+                  <td>
                     <button class="cesium-button" @click="layersets.lower(layer, index)" v-show="layersets.canLower(index)">▼</button>
                   </td>
                 </tr>
@@ -713,18 +722,25 @@ table{
 #layerloader tr {
     display: flex; /* 使用flexbox */
 }
-.narrow {
+.col-layertype {
     width: 2rem; /* 設定第一欄寬度為2rem */
     min-width: 0; /* 解除最小寬度限制 */
 }
 
-.flexible {
+.col-layername {
     flex: 1; /* 使第二欄彈性擴展 */
 }
 
-.small {
-    width: auto; /* 第三欄自動調整寬度 */
-    white-space: nowrap; /* 防止文字換行 */
+.col-layerwork {
+    width: 4rem; /* 第三欄自動調整寬度 */
+    min-width: 0; /* 解除最小寬度限制 */
+}
+.col-layerwork>button {
+  width: auto;
+  padding: 0 0.5rem;
+} 
+.col-layerdefault {
+    width: 6rem; /* 第三欄自動調整寬度 */
     min-width: 0; /* 解除最小寬度限制 */
 }
 
@@ -764,7 +780,7 @@ table{
   
 }
 
-#layerManager input {
+#layerloader input, #layerManager input {
   vertical-align: middle;
   padding-top: 2px;
   padding-bottom: 2px;
