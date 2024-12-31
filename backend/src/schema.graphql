@@ -85,4 +85,5 @@ type LayerInfo {
   link_info: JSONObject
   layer_type: String
   load_setting: JSONObject
+  enable: Boolean
 }

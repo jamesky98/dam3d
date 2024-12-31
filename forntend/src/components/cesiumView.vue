@@ -164,6 +164,9 @@
       const layer = new ImageryLayer(imageryProvider);
       layer.name = name;
       layersets.value.baseLayers.push(layer);
+      if(imageryLayers.length===0){
+        imageryLayers.add(layer);
+      }
       updateLayerList();
       if (layersets.value.baseLayers.length===1){
         layersets.value.selectedLayer = layersets.value.baseLayers[0];
@@ -199,12 +202,12 @@
   }
   async function add3DTilesLayerOption(
     name,
-    asset_id,
+    tilesetPromise,
     alpha,
     show,
   ) {
     try {
-      const layer = await Cesium3DTileset.fromIonAssetId(asset_id);
+      const layer = await Promise.resolve(tilesetPromise);
         let options = defaultValue(null, defaultValue.EMPTY_OBJECT);
 
         let style = options.style;
@@ -271,7 +274,7 @@
       // shouldAnimate: true,
       // clockViewModel: 
       // selectedImageryProviderViewModel
-      // imageryProviderViewModels
+      imageryProvider: false,
       // selectedTerrainProviderViewModel
       // terrainProviderViewModels
       // baseLayer
@@ -312,6 +315,8 @@
     viewer.scene.globe.depthTestAgainstTerrain = false;
     // 設定是否允許攝影機進入地下
     viewer.scene.screenSpaceCameraController.enableCollisionDetection = true;
+    // 停用自動完成
+    // viewer.geocoder.viewModel.autoComplete = false;
 
     // cs_viewer.extend(viewerCesium3DTilesInspectorMixin);
     // const inspectorViewModel = cs_viewer.cesium3DTilesInspector.viewModel;
@@ -497,14 +502,13 @@
     let allLayerInfo = fetch2.data.getAllLayers;
     
     let defaultLayer = fetch1_res.find(x => x.variable === 'layer_default').value;
-    await updateLayerManager(defaultLayer, allLayerInfo);
-
+    await initDefaulLayer(defaultLayer, allLayerInfo);
 
     LayerToLoad.value = layerClass.map(x => {
       return {
         className: x,
         classLayers: allLayerInfo.filter( layerInfo => { 
-          if (layerInfo.class_type === x) return layerInfo;
+          if (layerInfo.class_type === x && layerInfo.enable) return layerInfo;
         }),
       }
     });
@@ -515,16 +519,12 @@
     console.log('LayerToLoad: ',LayerToLoad.value);
   }
 
-  async function updateLayerManager(params, allLayerInfo){ 
+  async function initDefaulLayer(params, allLayerInfo){ 
     let baseSet = params.baselayer;
     let terrainSet = params.terrainlayer;
     let imgSet = params.imglayer;
     let tileSet = params.primitiveslayer;
     let entireSet = params.dataSource;
-
-    // 清空原有圖層
-
-
     // 加載預設圖層
     baseSet.forEach(async (layerid) => {
       // console.log('layerid:',layerid);
@@ -539,31 +539,12 @@
           break;
         case 'javascript':
           let codestr = 'new ' + layer.link_info.model + '()';
+          console.log('codestr:',codestr);
           await addBaseLayerOption(layer.name, eval(codestr));
           break;
       }
     });
-
-    terrainSet.forEach(async (layerid) => {
-      let layer = allLayerInfo.find(x => x.id === layerid+'');
-      console.log('terrainLayer:',layer);
-      switch (layer.source_type) {
-        case 'ion':
-          await addTerrainLayerOption(layer.name, CesiumTerrainProvider.fromIonAssetId(layer.link_info.assetId));
-          break;
-        case 'url':
-          // await addTerrainLayerOption(layer.name, new EllipsoidTerrainProvider());
-          break;
-        case 'javascript':
-          // let codestr = 'new ' + layer.link_info.model + '()';
-          // console.log('codestr:',codestr);
-          // await addTerrainLayerOption(layer.name, eval(codestr));
-          // break;
-      }
-    });
-    addTerrainLayerOption('無',new EllipsoidTerrainProvider());
-    terrainLayerChange(0);
-
+    
     imgSet.forEach(async (layerid) => {
       let layer = allLayerInfo.find(x => x.id === layerid+'');
       console.log('imgLayer:',layer);
@@ -576,17 +557,39 @@
           break;
         case 'javascript':
           let codestr = 'new ' + layer.link_info.model + '()';
+          console.log('codestr:',codestr);
           await addAdditionalLayerOption(layer.name, eval(codestr), 1.0, false);
           break;
       }
     });
+    
+    terrainSet.forEach(async (layerid) => {
+      let layer = allLayerInfo.find(x => x.id === layerid+'');
+      console.log('terrainLayer:',layer);
+      switch (layer.source_type) {
+        case 'ion':
+          await addTerrainLayerOption(layer.name, CesiumTerrainProvider.fromIonAssetId(layer.link_info.assetId));
+          break;
+        case 'url':
+          // await addTerrainLayerOption(layer.name, new EllipsoidTerrainProvider());
+          break;
+        case 'javascript':
+          let codestr = 'new ' + layer.link_info.model + '()';
+          console.log('codestr:',codestr);
+          await addTerrainLayerOption(layer.name, eval(codestr));
+          break;
+      }
+    });
+    addTerrainLayerOption('無',new EllipsoidTerrainProvider());
+    terrainLayerChange(0);
+
 
     tileSet.forEach(async (layerid) => {
       let layer = allLayerInfo.find(x => x.id === layerid+'');
       console.log('tileLayer:',layer);
       switch (layer.source_type) {
         case 'ion':
-          await add3DTilesLayerOption(layer.name, layer.link_info.assetId, 1, false);
+          await add3DTilesLayerOption(layer.name, Cesium3DTileset.fromIonAssetId(layer.link_info.assetId), 1, false);
           break;
         case 'url':
           // await add3DTilesLayerOption(layer.name, layer.link_info.assetId, 1, false);
@@ -594,6 +597,10 @@
         case 'javascript':
           // let codestr = 'new ' + layer.link_info.model + '()';
           // await add3DTilesLayerOption(layer.name, eval(codestr), 1, false);
+          break;
+        case 'local':
+          console.log('path:',layer.link_info.filepath);
+          await add3DTilesLayerOption(layer.name, Cesium3DTileset.fromUrl(layer.link_info.filepath), 1, false);
           break;
       }
     });

@@ -19,6 +19,7 @@ const GETALLLAYERS = gql`
       link_info
       layer_type
       load_setting
+      enable
     }
   }
 `;
