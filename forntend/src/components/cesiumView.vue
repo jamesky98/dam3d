@@ -10,39 +10,40 @@
   } from "vue";
   import router from '../router'
 
-  import { 
-    defined,
-    Color,
-    Camera,
-    Rectangle,
-    Cartesian3, 
-    Cesium3DTileStyle,
-    createOsmBuildingsAsync, 
-    createWorldImageryAsync,
-    Cesium3DTileset, 
-    Ion, Math as CesiumMath, 
-    IonWorldImageryStyle,
-    Terrain, Viewer,
-    RequestScheduler,
-    viewerCesium3DTilesInspectorMixin,
-    knockout,
-    ArcGisMapServerImageryProvider,
-    OpenStreetMapImageryProvider,
-    TileMapServiceImageryProvider,
-    WebMapTileServiceImageryProvider,
-    WebMapServiceImageryProvider,
-    GridImageryProvider,
-    TileCoordinatesImageryProvider,
-    ImageryLayer,
-    defaultValue,
-    buildModuleUrl,
-    CesiumTerrainProvider,
-    IonImageryProvider,
-    ImageryProvider,
-    Ellipsoid,
-    IonResource,
-    EllipsoidTerrainProvider,
-  } from 'cesium';
+  // import { 
+  //   defined,
+  //   Color,
+  //   Camera,
+  //   Rectangle,
+  //   Cartesian3, 
+  //   Cesium3DTileStyle,
+  //   createOsmBuildingsAsync, 
+  //   createWorldImageryAsync,
+  //   Cesium3DTileset, 
+  //   Ion, Math as CesiumMath, 
+  //   IonWorldImageryStyle,
+  //   Terrain, Viewer,
+  //   RequestScheduler,
+  //   viewerCesium3DTilesInspectorMixin,
+  //   knockout,
+  //   ArcGisMapServerImageryProvider,
+  //   OpenStreetMapImageryProvider,
+  //   TileMapServiceImageryProvider,
+  //   WebMapTileServiceImageryProvider,
+  //   WebMapServiceImageryProvider,
+  //   GridImageryProvider,
+  //   TileCoordinatesImageryProvider,
+  //   ImageryLayer,
+  //   defaultValue,
+  //   buildModuleUrl,
+  //   CesiumTerrainProvider,
+  //   IonImageryProvider,
+  //   ImageryProvider,
+  //   Ellipsoid,
+  //   IonResource,
+  //   EllipsoidTerrainProvider,
+  // } from 'cesium';
+  import * as cs from 'cesium'; 
   import "cesium/Build/Cesium/Widgets/widgets.css";
 
   import {
@@ -65,18 +66,18 @@
     // Replace `your_access_token` with your Cesium ion access token.
     const google_token = ref(import.meta.env.VITE_GOOGLE_Token);
     const cesium_token = ref(import.meta.env.VITE_CESIUM_Token);
-    Ion.defaultAccessToken = cesium_token.value;
+    cs.Ion.defaultAccessToken = cesium_token.value;
 
     let cs_viewer;
     let cs_camera;
     let imageryLayers;
 
-    let extent = Rectangle.fromDegrees(121.137153,23.981800,121.142690,23.977894);
-    Camera.DEFAULT_VIEW_RECTANGLE = extent;
-    Camera.DEFAULT_VIEW_FACTOR = 0.0005;
+    let extent = cs.Rectangle.fromDegrees(121.137153,23.981800,121.142690,23.977894);
+    cs.Camera.DEFAULT_VIEW_RECTANGLE = extent;
+    cs.Camera.DEFAULT_VIEW_FACTOR = 0.0005;
     
     // google Maptile 加速使用
-    RequestScheduler.requestsByServer["tile.googleapis.com:443"] = 18;
+    cs.RequestScheduler.requestsByServer["tile.googleapis.com:443"] = 18;
     const selectLayerIndex = ref(0);
     const terrainLayerIndex = ref(0);
     const layersets = ref({
@@ -132,12 +133,12 @@
     // enabled at once, just like the other layers, but it doesn't make much sense because
     // all of these layers cover the entire globe and are opaque.
     new Promise((resolve, reject) => {
-      let res = addBaseLayerOption("OpenStreetMaps", new OpenStreetMapImageryProvider());
+      let res = addBaseLayerOption("OpenStreetMaps", new cs.OpenStreetMapImageryProvider());
       resolve(res);
     }).then((res) => {
       addBaseLayerOption(
         "臺灣通用電子地圖(正射影像)",
-        new WebMapTileServiceImageryProvider({
+        new cs.WebMapTileServiceImageryProvider({
           url: "https://wmts.nlsc.gov.tw/wmts",
           layer: "PHOTO2",
           style: "default",
@@ -148,10 +149,10 @@
         }),
       );
 
-      addAdditionalLayerOption("Grid", new GridImageryProvider(), 1.0, false);
+      addAdditionalLayerOption("Grid", new cs.GridImageryProvider(), 1.0, false);
       addAdditionalLayerOption(
         "Tile Coordinates",
-        new TileCoordinatesImageryProvider(),
+        new cs.TileCoordinatesImageryProvider(),
         1.0,
         false,
       );
@@ -161,7 +162,7 @@
   async function addBaseLayerOption(name, imageryProviderPromise) {
     try {
       const imageryProvider = await Promise.resolve(imageryProviderPromise);
-      const layer = new ImageryLayer(imageryProvider);
+      const layer = new cs.ImageryLayer(imageryProvider);
       layer.name = name;
       layersets.value.baseLayers.push(layer);
       if(imageryLayers.length===0){
@@ -190,9 +191,9 @@
   ) {
     try {
       const imageryProvider = await Promise.resolve(imageryProviderPromise);
-      const layer = new ImageryLayer(imageryProvider);
-      layer.alpha = defaultValue(alpha, 0.5);
-      layer.show = defaultValue(show, true);
+      const layer = new cs.ImageryLayer(imageryProvider);
+      layer.alpha = cs.defaultValue(alpha, 0.5);
+      layer.show = cs.defaultValue(show, true);
       layer.name = name;
       imageryLayers.add(layer);
       updateLayerList();
@@ -208,22 +209,22 @@
   ) {
     try {
       const layer = await Promise.resolve(tilesetPromise);
-        let options = defaultValue(null, defaultValue.EMPTY_OBJECT);
+        let options = cs.defaultValue(null, cs.defaultValue.EMPTY_OBJECT);
 
         let style = options.style;
 
-        if (!defined(style)) {
-          const color = defaultValue(
+        if (!cs.defined(style)) {
+          const color = cs.defaultValue(
             options.defaultColor,
-            Color.WHITE,
+            cs.Color.WHITE,
           ).toCssColorString();
-          style = new Cesium3DTileStyle({
+          style = new cs.Cesium3DTileStyle({
             color: `Boolean(\${feature['cesium#color']}) ? color(\${feature['cesium#color']}) : ${color}`,
           });
         }
       layer.style = style;
-      layer.alpha = defaultValue(alpha, 1);
-      layer.show = defaultValue(show, true);
+      layer.alpha = cs.defaultValue(alpha, 1);
+      layer.show = cs.defaultValue(show, true);
       layer.name = name;
       cs_viewer.scene.primitives.add(layer);
 
@@ -257,7 +258,7 @@
 // Cesium初始化
   async function initCesiumView(viewer,options) {
     // Initialize the Cesium Viewer in the HTML element with the `cesiumContainer` ID.
-    viewer = new Viewer('cesiumContainer', {
+    viewer = new cs.Viewer('cesiumContainer', {
       animation: false,
       baseLayerPicker: false,
       // fullscreenButton: false,
@@ -296,8 +297,8 @@
       // creditContainer
       // creditViewport
       // dataSources
-      shadows: false,
-      // terrainShadows
+      shadows: true,
+      // terrainShadows: cs.ShadowMode.ENABLED,
       // mapMode2D
       projectionPicker: false,
       // blurActiveElementOnCanvasFocus: true,
@@ -306,7 +307,6 @@
       // depthPlaneEllipsoidOffset
       // msaaSamples
     });   
-
     // Logo none
     viewer.bottomContainer.style.display = "none";
     // 顯示FTS視窗
@@ -354,12 +354,12 @@
         // 根據資產類型載入
         switch (asset.type.toUpperCase()) {
           case 'IMAGERY':
-            addBaseLayerOption(asset.name, IonImageryProvider.fromAssetId(asset.id));
+            addBaseLayerOption(asset.name, cs.IonImageryProvider.fromAssetId(asset.id));
             // console.log(`Loaded imagery asset: ${asset.name}`);
             break;
 
           case 'TERRAIN':
-            addTerrainLayerOption(asset.name, CesiumTerrainProvider.fromIonAssetId(asset.id));
+            addTerrainLayerOption(asset.name, cs.CesiumTerrainProvider.fromIonAssetId(asset.id));
             // console.log(`Loaded terrain asset: ${asset.name}`);
             break;
 
@@ -416,10 +416,11 @@
     // console.log('terrainLayerIndex:',terrainLayerIndex);
 
     // Handle changes to the drop-down base layer selector.
+    // console.log('terrainLayer:',layersets.value.terrainLayers[terrainLayerIndex]);
     const terrainLayer = layersets.value.terrainLayers[terrainLayerIndex]?layersets.value.terrainLayers[terrainLayerIndex]:null;
     if(!terrainLayer) return;
       cs_viewer.scene.setTerrain(
-        new Terrain(toRaw(terrainLayer)),
+        new cs.Terrain(toRaw(terrainLayer)),
       );
     // cs_viewer.scene.terrainProvider = toRaw(terrainLayer);
     return terrainLayer;
@@ -514,9 +515,9 @@
     });
 
     // console.log('settings: ',settings);
-    console.log('layerClass: ',layerClass);
-    console.log('allLayerInfo: ',allLayerInfo);
-    console.log('LayerToLoad: ',LayerToLoad.value);
+    // console.log('layerClass: ',layerClass);
+    // console.log('allLayerInfo: ',allLayerInfo);
+    // console.log('LayerToLoad: ',LayerToLoad.value);
   }
 
   async function initDefaulLayer(params, allLayerInfo){ 
@@ -529,17 +530,17 @@
     baseSet.forEach(async (layerid) => {
       // console.log('layerid:',layerid);
       let layer = allLayerInfo.find(x => x.id === layerid+'');
-      console.log('baseLayer:',layer);
+      // console.log('baseLayer:',layer);
       switch (layer.source_type) {
         case 'ion':
-          await addBaseLayerOption(layer.name, IonImageryProvider.fromAssetId(layer.link_info.assetId));
+          await addBaseLayerOption(layer.name, cs.IonImageryProvider.fromAssetId(layer.link_info.assetId));
           break;
         case 'url':
-          await addBaseLayerOption(layer.name, new WebMapTileServiceImageryProvider(layer.link_info));
+          await addBaseLayerOption(layer.name, new cs.WebMapTileServiceImageryProvider(layer.link_info));
           break;
         case 'javascript':
-          let codestr = 'new ' + layer.link_info.model + '()';
-          console.log('codestr:',codestr);
+          let codestr = 'new cs.' + layer.link_info.model + '()';
+          // console.log('codestr:',codestr);
           await addBaseLayerOption(layer.name, eval(codestr));
           break;
       }
@@ -547,17 +548,17 @@
     
     imgSet.forEach(async (layerid) => {
       let layer = allLayerInfo.find(x => x.id === layerid+'');
-      console.log('imgLayer:',layer);
+      // console.log('imgLayer:',layer);
       switch (layer.source_type) {
         case 'ion':
-          await addAdditionalLayerOption(layer.name, IonImageryProvider.fromAssetId(layer.link_info.assetId), 1.0, false);
+          await addAdditionalLayerOption(layer.name, cs.IonImageryProvider.fromAssetId(layer.link_info.assetId), 1.0, false);
           break;
         case 'url':
-          await addAdditionalLayerOption(layer.name, new WebMapTileServiceImageryProvider(layer.link_info), 1.0, false);
+          await addAdditionalLayerOption(layer.name, new cs.WebMapTileServiceImageryProvider(layer.link_info), 1.0, false);
           break;
         case 'javascript':
-          let codestr = 'new ' + layer.link_info.model + '()';
-          console.log('codestr:',codestr);
+          let codestr = 'new cs.' + layer.link_info.model + '()';
+          // console.log('codestr:',codestr);
           await addAdditionalLayerOption(layer.name, eval(codestr), 1.0, false);
           break;
       }
@@ -565,31 +566,31 @@
     
     terrainSet.forEach(async (layerid) => {
       let layer = allLayerInfo.find(x => x.id === layerid+'');
-      console.log('terrainLayer:',layer);
+      // console.log('terrainLayer:',layer);
       switch (layer.source_type) {
         case 'ion':
-          await addTerrainLayerOption(layer.name, CesiumTerrainProvider.fromIonAssetId(layer.link_info.assetId));
+          await addTerrainLayerOption(layer.name, cs.CesiumTerrainProvider.fromIonAssetId(layer.link_info.assetId));
           break;
         case 'url':
           // await addTerrainLayerOption(layer.name, new EllipsoidTerrainProvider());
           break;
         case 'javascript':
-          let codestr = 'new ' + layer.link_info.model + '()';
-          console.log('codestr:',codestr);
+          let codestr = 'new cs.' + layer.link_info.model + '()';
+          // console.log('codestr:',codestr);
           await addTerrainLayerOption(layer.name, eval(codestr));
           break;
       }
     });
-    addTerrainLayerOption('無',new EllipsoidTerrainProvider());
+    await addTerrainLayerOption('無',new cs.EllipsoidTerrainProvider());
     terrainLayerChange(0);
 
 
     tileSet.forEach(async (layerid) => {
       let layer = allLayerInfo.find(x => x.id === layerid+'');
-      console.log('tileLayer:',layer);
+      // console.log('tileLayer:',layer);
       switch (layer.source_type) {
         case 'ion':
-          await add3DTilesLayerOption(layer.name, Cesium3DTileset.fromIonAssetId(layer.link_info.assetId), 1, false);
+          await add3DTilesLayerOption(layer.name, cs.Cesium3DTileset.fromIonAssetId(layer.link_info.assetId), 1, false);
           break;
         case 'url':
           // await add3DTilesLayerOption(layer.name, layer.link_info.assetId, 1, false);
@@ -599,8 +600,8 @@
           // await add3DTilesLayerOption(layer.name, eval(codestr), 1, false);
           break;
         case 'local':
-          console.log('path:',layer.link_info.filepath);
-          await add3DTilesLayerOption(layer.name, Cesium3DTileset.fromUrl(layer.link_info.filepath), 1, false);
+          // console.log('path:',layer.link_info.filepath);
+          await add3DTilesLayerOption(layer.name, cs.Cesium3DTileset.fromUrl(layer.link_info.filepath), 1, false);
           break;
       }
     });
@@ -609,8 +610,6 @@
 
 // 頁面渲染完成後執行步驟
   onMounted( async function () {
-    
-
     cs_viewer = await initCesiumView(cs_viewer,'');
     // console.log(cs_viewer);
     createButton();
@@ -675,7 +674,7 @@
                   <i v-if="layer.layer_type==='TERRAIN'" class="fas fa-chart-area"></i>
                   <i v-if="layer.layer_type==='3DTILES'" class="fas fa-city"></i>
                 </div>
-                <div class="flex-grow-1 text-truncate">
+                <div class="flex-grow-1 text-truncate" :title="layer.name">
                   {{layer.name}}
                 </div>
                 <div class="col-layerwork">
@@ -700,8 +699,8 @@
                   :class="['align-items-center', (layer===layersets.upLayer)?'up':(layer===layersets.downLayer)?'down':'']">
                   <td><span v-if="layersets.isSelectableLayer(layer)" class="me-2">底圖</span><input type="checkbox" v-model="layer.show"></td>
                   <td class="text-nowrap">
-                    <div v-show="!layersets.isSelectableLayer(layer)">{{layer.name}}</div>
-                    <select v-if="layersets.isSelectableLayer(layer)" v-model="selectLayerIndex">
+                    <div v-show="!layersets.isSelectableLayer(layer)" :title="layer.name">{{layer.name}}</div>
+                    <select v-if="layersets.isSelectableLayer(layer)" v-model="selectLayerIndex" :title="layer.name">
                       <option v-for="(baseLayer, index) in layersets.baseLayers" :value="index">{{ baseLayer.name }}</option>
                     </select>
                   </td>
@@ -771,6 +770,7 @@ table{
   width: 0;
   height: 100%;
   z-index: 100;
+  background-color: rgba(255, 255, 255, 0);
 }
 #toolbar {
   display: flex;
@@ -781,6 +781,7 @@ table{
   top: 3rem;
   left: 0.5rem;
   z-index: 2;
+  pointer-events: none;
 }
 
 /* 圖層按鈕 */
@@ -804,6 +805,10 @@ table{
   --mdb-accordion-active-bg: rgba(42, 42, 42, 0.8); 
   --mdb-accordion-body-padding-x: 1rem;
   text-wrap: nowrap;
+}
+
+#layerloader, #layerManager, #hiddenBtn{
+  pointer-events: auto;
 }
 
 /* 圖層管理加載工具 */
@@ -940,4 +945,5 @@ table{
   border-left: 1px solid rgb(167, 167, 167);
   border-right: 1px solid rgb(167, 167, 167);
 }
+
 </style>
