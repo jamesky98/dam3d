@@ -15,3 +15,38 @@ html, body{
   max-width: 100%;
 }
 
+#northBtn {
+  /* position: relative; */
+  /* top: 10px; */
+  /* right: 10px; */
+  /* width: 50px; */
+  /* height: 50px; */
+  background-color: rgba(255, 255, 255, 0.7);
+  /* border: 1px solid black; */
+  /* border-radius: 50%; */
+  align-items: center;
+  overflow: visible;
+  font-weight: bold;
+  font-size: 1rem;
+  color: black;
+  transition: transform 0.1s; /* 平滑旋轉 */
+}
+#northBtn>div {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items:end;
+  justify-content: center;
+  line-height: normal;
+}
+
+#northBtn>div::before {
+  content: '';
+  position: absolute;
+  top:1px;
+  left: 50%;
+  margin-left: -5px; /* 調整三角形位置 */
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 10px solid red; /* 三角形顏色 */
+}

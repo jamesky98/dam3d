@@ -425,7 +425,7 @@
     // cs_viewer.scene.terrainProvider = toRaw(terrainLayer);
     return terrainLayer;
   }
-  function createButton(){
+  function createButton(viewer){
     // 建立管理者登入按鈕
     const adminButton = document.createElement('button');
     adminButton.id = 'adminPage';
@@ -435,7 +435,44 @@
     adminButton.onclick = function() {
       router.push("/logIn");
     };
+
+    const northButton = document.createElement('div');
+    northButton.id = 'northBtn';
+    northButton.innerHTML = '<div>N</div>';
+    northButton.className = 'cesium-button cesium-toolbar-button';
+    northButton.title = '指北針';
+    northButton.onclick = function() {
+      let camera = viewer.camera;
+      // let winCenter = new cs.Cartesian2(viewer.scene.canvas.clientWidth / 2, viewer.scene.canvas.clientHeight / 2);
+      let winCenter = viewer.scene.pickPosition(new cs.Cartesian2(viewer.scene.canvas.clientWidth / 2, viewer.scene.canvas.clientHeight / 2));
+      // console.log('winCenter:',winCenter);
+      let winCenterLL = new cs.Cartographic.fromCartesian(winCenter);
+      // console.log('winCenter:',winCenter);
+      let targetPosition = camera.getPickRay(winCenter).origin; // 獲取視線目標的中心點
+      let targetPositionLL = new cs.Cartographic.fromCartesian(targetPosition);
+      // console.log('targetPosition:',targetPosition);
+      let flytoPosition = new cs.Cartesian3.fromRadians(winCenterLL.longitude, winCenterLL.latitude, targetPositionLL.height);
+
+      // 設定相機轉向垂直向下
+      camera.flyTo({
+          destination: flytoPosition, // 保持當前位置
+          orientation : {
+            heading: cs.Math.toRadians(0.0), // 0度朝北
+            pitch: cs.Math.toRadians(-90.0), // 垂直向下
+            roll: 0.0
+          },  
+          duration: 1.0 // 動畫持續時間 1 秒
+      });
+
+    };
+
+    viewer.scene.preRender.addEventListener(function() {
+        var heading = viewer.camera.heading; // 獲取相機的朝向
+        document.querySelector('#northBtn>div').style.transform = 'rotate(' + (-heading * (180 / Math.PI)) + 'deg)';
+    });
+
     document.getElementsByClassName('cesium-viewer-toolbar')[0].appendChild(adminButton);
+    document.getElementsByClassName('cesium-viewer-toolbar')[0].appendChild(northButton);
   }
   // 切換顯示圖層管理工具
   function showLayerManager(){
@@ -612,7 +649,7 @@
   onMounted( async function () {
     cs_viewer = await initCesiumView(cs_viewer,'');
     // console.log(cs_viewer);
-    createButton();
+    createButton(cs_viewer);
     imageryLayers = cs_viewer.imageryLayers;
     await getSettionFormGrphql();
     // setupLayers();
@@ -772,6 +809,7 @@ table{
   z-index: 100;
   background-color: rgba(255, 255, 255, 0);
 }
+
 #toolbar {
   display: flex;
   color: white;
